@@ -1,0 +1,38 @@
+{
+  "name": "browser-interface",
+  "version": "0.1.0",
+  "description": "Lightweight human interface for live browser sessions over CDP",
+  "type": "module",
+  "bin": {
+    "browser-interface": "dist/server/cli.js"
+  },
+  "main": "dist/server/index.js",
+  "types": "dist/server/index.d.ts",
+  "scripts": {
+    "build": "npm run build:server && npm run build:client",
+    "build:server": "tsc -p tsconfig.server.json",
+    "build:client": "node scripts/build-client.mjs",
+    "dev": "node scripts/dev.mjs",
+    "start": "node dist/server/cli.js",
+    "typecheck": "tsc -p tsconfig.server.json --noEmit && tsc -p tsconfig.client.json --noEmit",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "chrome-remote-interface": "^0.33.3",
+    "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "@types/chrome-remote-interface": "^0.31.14",
+    "@types/node": "^22.10.0",
+    "@types/ws": "^8.5.13",
+    "esbuild": "^0.24.0",
+    "typescript": "^5.7.0"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ]
+}

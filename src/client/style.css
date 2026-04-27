@@ -1,0 +1,355 @@
+:root {
+  color-scheme: dark;
+  --bg: #0e1014;
+  --bg-elev: #161a21;
+  --border: #232934;
+  --fg: #e6e9ef;
+  --fg-dim: #8a93a4;
+  --accent: #4f8cff;
+  --ok: #3ecf8e;
+  --warn: #ffb84d;
+  --err: #ff6b6b;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  background: var(--bg);
+  color: var(--fg);
+  font-family:
+    ui-sans-serif,
+    system-ui,
+    -apple-system,
+    "Segoe UI",
+    sans-serif;
+  font-size: 13px;
+}
+
+body {
+  display: flex;
+  flex-direction: column;
+}
+
+.tabs {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 10px;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+  overflow-x: auto;
+  flex: 0 0 auto;
+  scrollbar-width: thin;
+}
+
+.tabs:empty {
+  display: none;
+}
+
+.tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 6px 4px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--fg-dim);
+  font-size: 11px;
+  max-width: 200px;
+  cursor: pointer;
+  white-space: nowrap;
+  flex: 0 0 auto;
+}
+
+.tab:hover {
+  background: #1a1f27;
+  color: var(--fg);
+}
+
+.tab.active {
+  color: var(--fg);
+  background: var(--bg-elev);
+  border-color: var(--accent);
+}
+
+.tab.active.dimmed {
+  /* Out-of-focus in real Chrome — keep the accent border so the user knows
+     this is still the bridge's tab, but dim the title text and add a subtle
+     refocus hint. */
+  color: var(--fg-dim);
+  cursor: pointer;
+}
+
+.tab.active.dimmed .title {
+  font-style: italic;
+}
+
+.tab .title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 160px;
+}
+
+.tab .close {
+  background: transparent;
+  border: none;
+  color: var(--fg-dim);
+  cursor: pointer;
+  padding: 0 2px;
+  font-size: 13px;
+  line-height: 1;
+  border-radius: 3px;
+}
+
+.tab .close:hover {
+  background: rgba(255, 107, 107, 0.18);
+  color: var(--err);
+}
+
+.new-tab {
+  background: transparent;
+  border: 1px dashed var(--border);
+  color: var(--fg-dim);
+  padding: 4px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+  flex: 0 0 auto;
+}
+
+.new-tab:hover {
+  color: var(--fg);
+  border-color: var(--accent);
+}
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  background: var(--bg-elev);
+  border-bottom: 1px solid var(--border);
+  flex: 0 0 auto;
+}
+
+.nav {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--fg);
+  width: 30px;
+  height: 30px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+}
+
+.nav:hover {
+  background: #1d222b;
+}
+
+.nav:active {
+  background: #252b36;
+}
+
+.url-form {
+  flex: 1 1 auto;
+  display: flex;
+}
+
+#url {
+  flex: 1 1 auto;
+  background: #0a0c10;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--fg);
+  padding: 6px 10px;
+  font: inherit;
+  outline: none;
+}
+
+#url:focus {
+  border-color: var(--accent);
+}
+
+.status {
+  font-size: 11px;
+  color: var(--fg-dim);
+  padding: 4px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  white-space: nowrap;
+}
+
+.status[data-state="connected"] {
+  color: var(--ok);
+  border-color: rgba(62, 207, 142, 0.3);
+}
+
+.status[data-state="connecting"] {
+  color: var(--warn);
+  border-color: rgba(255, 184, 77, 0.3);
+}
+
+.status[data-state="disconnected"],
+.status[data-state="error"] {
+  color: var(--err);
+  border-color: rgba(255, 107, 107, 0.3);
+}
+
+.stage {
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  outline: none;
+  padding: 12px;
+}
+
+.frame {
+  position: relative;
+  background: #000;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4);
+  border-radius: 6px;
+  overflow: hidden;
+  /* Sized inline by JS based on viewport metrics. */
+  max-width: 100%;
+  max-height: 100%;
+}
+
+#screen {
+  display: block;
+  width: 100%;
+  height: 100%;
+  user-select: none;
+  -webkit-user-drag: none;
+  transition: filter 120ms ease, opacity 120ms ease;
+}
+
+body.out-of-focus #screen {
+  /* The frame is stale — Chrome stops compositing backgrounded tabs.
+     Subtly desaturate so the user notices, but keep it readable. */
+  filter: saturate(0.4) brightness(0.85);
+  opacity: 0.85;
+}
+
+body.out-of-focus .frame {
+  cursor: pointer;
+}
+
+.inactive-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(8, 10, 14, 0.55);
+  backdrop-filter: blur(2px);
+  z-index: 10;
+}
+
+.inactive-overlay[hidden] {
+  display: none;
+}
+
+.inactive-card {
+  background: var(--bg-elev);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 16px 18px;
+  max-width: 360px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+}
+
+.inactive-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--fg);
+  margin-bottom: 6px;
+}
+
+.inactive-body {
+  font-size: 12px;
+  color: var(--fg-dim);
+  line-height: 1.45;
+  margin-bottom: 14px;
+}
+
+.inactive-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.btn-primary,
+.btn-secondary {
+  padding: 6px 12px;
+  border-radius: 6px;
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  border: 1px solid var(--border);
+}
+
+.btn-primary {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+}
+
+.btn-primary:hover {
+  filter: brightness(1.1);
+}
+
+.btn-secondary {
+  background: transparent;
+  color: var(--fg);
+}
+
+.btn-secondary:hover {
+  background: #1a1f27;
+}
+
+.toast {
+  position: fixed;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(255, 107, 107, 0.12);
+  border: 1px solid rgba(255, 107, 107, 0.45);
+  color: #ffd9d9;
+  padding: 8px 14px;
+  border-radius: 8px;
+  font-size: 12px;
+  z-index: 100;
+  max-width: 80%;
+  pointer-events: none;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+}
+
+.toast[hidden] {
+  display: none;
+}
+
+.placeholder {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--fg-dim);
+  pointer-events: none;
+}
+
+.placeholder.hidden {
+  display: none;
+}

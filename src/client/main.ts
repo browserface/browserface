@@ -1,0 +1,429 @@
+import type {
+  ClientAction,
+  ClientActionMessage,
+  ModifierKey,
+  ServerMessage,
+  TabInfo,
+} from "../shared/protocol.js";
+
+type ConnectionState = "connecting" | "connected" | "disconnected" | "error";
+
+interface Viewport {
+  width: number;
+  height: number;
+  deviceScaleFactor: number;
+}
+
+const els = {
+  tabs: document.getElementById("tabs") as HTMLElement,
+  back: document.getElementById("back") as HTMLButtonElement,
+  forward: document.getElementById("forward") as HTMLButtonElement,
+  reload: document.getElementById("reload") as HTMLButtonElement,
+  urlForm: document.getElementById("url-form") as HTMLFormElement,
+  url: document.getElementById("url") as HTMLInputElement,
+  status: document.getElementById("status") as HTMLSpanElement,
+  stage: document.getElementById("stage") as HTMLElement,
+  frame: document.getElementById("frame") as HTMLDivElement,
+  screen: document.getElementById("screen") as HTMLImageElement,
+  placeholder: document.getElementById("placeholder") as HTMLDivElement,
+  inactiveOverlay: document.getElementById("inactive-overlay") as HTMLDivElement,
+  inactiveRevive: document.getElementById("inactive-revive") as HTMLButtonElement,
+  inactiveCancel: document.getElementById("inactive-cancel") as HTMLButtonElement,
+  toast: document.getElementById("toast") as HTMLDivElement,
+};
+
+let viewport: Viewport = { width: 1280, height: 800, deviceScaleFactor: 1 };
+let urlEditing = false;
+let nextActionId = 1;
+let isVisible = true;
+let lastTabs: TabInfo[] = [];
+
+function setStatus(state: ConnectionState, label?: string) {
+  els.status.dataset.state = state;
+  els.status.textContent =
+    label ??
+    {
+      connecting: "connecting…",
+      connected: "connected",
+      disconnected: "disconnected",
+      error: "error",
+    }[state];
+}
+
+function fitFrame() {
+  // Sets the framed image element to the largest size that fits the stage,
+  // preserving the aspect ratio of the remote viewport.
+  const padding = 24;
+  const availW = els.stage.clientWidth - padding;
+  const availH = els.stage.clientHeight - padding;
+  const aspect = viewport.width / viewport.height;
+  let w = availW;
+  let h = w / aspect;
+  if (h > availH) {
+    h = availH;
+    w = h * aspect;
+  }
+  els.frame.style.width = `${Math.max(0, Math.floor(w))}px`;
+  els.frame.style.height = `${Math.max(0, Math.floor(h))}px`;
+}
+
+function pointToViewport(e: { clientX: number; clientY: number }): { x: number; y: number } {
+  const rect = els.frame.getBoundingClientRect();
+  const xRatio = (e.clientX - rect.left) / rect.width;
+  const yRatio = (e.clientY - rect.top) / rect.height;
+  return {
+    x: Math.max(0, Math.min(viewport.width, xRatio * viewport.width)),
+    y: Math.max(0, Math.min(viewport.height, yRatio * viewport.height)),
+  };
+}
+
+function modifiersFromEvent(e: KeyboardEvent | MouseEvent | WheelEvent): ModifierKey[] {
+  const mods: ModifierKey[] = [];
+  if (e.altKey) mods.push("Alt");
+  if (e.ctrlKey) mods.push("Control");
+  if (e.metaKey) mods.push("Meta");
+  if (e.shiftKey) mods.push("Shift");
+  return mods;
+}
+
+class Bridge {
+  private ws: WebSocket | null = null;
+  private retryDelay = 500;
+  private intentionallyClosed = false;
+
+  connect() {
+    const proto = location.protocol === "https:" ? "wss:" : "ws:";
+    const ws = new WebSocket(`${proto}//${location.host}/ws`);
+    this.ws = ws;
+    setStatus("connecting");
+
+    ws.addEventListener("open", () => {
+      this.retryDelay = 500;
+      setStatus("connected");
+      ws.send(
+        JSON.stringify({
+          type: "hello",
+          client: `human-${Math.random().toString(36).slice(2, 8)}`,
+          role: "human",
+        }),
+      );
+    });
+
+    ws.addEventListener("message", (ev) => {
+      let msg: ServerMessage;
+      try {
+        msg = JSON.parse(typeof ev.data === "string" ? ev.data : "");
+      } catch {
+        return;
+      }
+      this.handleServerMessage(msg);
+    });
+
+    ws.addEventListener("close", () => {
+      this.ws = null;
+      if (this.intentionallyClosed) return;
+      setStatus("disconnected");
+      setTimeout(() => this.connect(), this.retryDelay);
+      this.retryDelay = Math.min(5000, this.retryDelay * 2);
+    });
+
+    ws.addEventListener("error", () => {
+      setStatus("error");
+    });
+  }
+
+  send(action: ClientAction) {
+    if (!this.ws || this.ws.readyState !== WebSocket.OPEN) return;
+    const msg: ClientActionMessage = {
+      type: "action",
+      id: String(nextActionId++),
+      action,
+    };
+    this.ws.send(JSON.stringify(msg));
+  }
+
+  private handleServerMessage(msg: ServerMessage) {
+    switch (msg.type) {
+      case "ready":
+        viewport = msg.viewport;
+        if (!urlEditing) els.url.value = msg.url;
+        document.title = msg.title ? `${msg.title} — Browser Interface` : "Browser Interface";
+        fitFrame();
+        return;
+      case "screenshot": {
+        viewport = {
+          width: msg.width,
+          height: msg.height,
+          deviceScaleFactor: msg.deviceScaleFactor,
+        };
+        const mime = msg.format === "png" ? "image/png" : "image/jpeg";
+        els.screen.src = `data:${mime};base64,${msg.data}`;
+        els.placeholder.classList.add("hidden");
+        // If frames are arriving, the tab is alive — clear any stale inactive prompt.
+        hideInactiveOverlay();
+        fitFrame();
+        return;
+      }
+      case "page":
+        if (!urlEditing) els.url.value = msg.url;
+        document.title = msg.title ? `${msg.title} — Browser Interface` : "Browser Interface";
+        return;
+      case "tabs":
+        lastTabs = msg.tabs;
+        renderTabs(msg.tabs);
+        return;
+      case "visibility":
+        if (msg.visible !== isVisible) {
+          isVisible = msg.visible;
+          document.body.classList.toggle("out-of-focus", !isVisible);
+          renderTabs(lastTabs);
+        }
+        return;
+      case "inactive":
+        showInactiveOverlay();
+        return;
+      case "error":
+        console.warn("[bridge] server error:", msg.message);
+        showToast(msg.message);
+        return;
+      case "ack":
+        return;
+    }
+  }
+}
+
+const bridge = new Bridge();
+bridge.connect();
+
+// ── Tabs ─────────────────────────────────────────────────────────────────────
+
+function renderTabs(tabs: TabInfo[]) {
+  els.tabs.replaceChildren();
+  for (const tab of tabs) {
+    const el = document.createElement("button");
+    el.type = "button";
+    const dimmed = tab.active && !isVisible;
+    el.className = `tab${tab.active ? " active" : ""}${dimmed ? " dimmed" : ""}`;
+    el.title = dimmed
+      ? `${tab.title || tab.url}\n${tab.url}\n(click to bring back to front in Chrome)`
+      : `${tab.title || tab.url}\n${tab.url}`;
+
+    const title = document.createElement("span");
+    title.className = "title";
+    title.textContent = tab.title || hostnameOf(tab.url) || tab.url || "(untitled)";
+    el.appendChild(title);
+
+    const close = document.createElement("button");
+    close.type = "button";
+    close.className = "close";
+    close.textContent = "×";
+    close.title = "Close tab";
+    close.addEventListener("click", (ev) => {
+      ev.stopPropagation();
+      bridge.send({ type: "closeTab", tabId: tab.id });
+    });
+    el.appendChild(close);
+
+    el.addEventListener("click", () => {
+      if (!tab.active) {
+        // Clear any inactive prompt left over from the previous tab so it
+        // doesn't linger over the new one until the timeout re-fires.
+        hideInactiveOverlay();
+        bridge.send({ type: "switchTab", tabId: tab.id });
+      } else {
+        // Re-clicking the active tab refocuses it in the user's real Chrome —
+        // the bridge already attaches here, this just brings it to foreground.
+        bridge.send({ type: "refocus" });
+      }
+    });
+    els.tabs.appendChild(el);
+  }
+  const newBtn = document.createElement("button");
+  newBtn.type = "button";
+  newBtn.className = "new-tab";
+  newBtn.textContent = "+";
+  newBtn.title = "New tab";
+  newBtn.addEventListener("click", () => bridge.send({ type: "newTab" }));
+  els.tabs.appendChild(newBtn);
+}
+
+function hostnameOf(url: string): string {
+  try {
+    return new URL(url).hostname;
+  } catch {
+    return "";
+  }
+}
+
+// ── Inactive-tab overlay ─────────────────────────────────────────────────────
+
+function showInactiveOverlay() {
+  els.inactiveOverlay.hidden = false;
+}
+
+function hideInactiveOverlay() {
+  els.inactiveOverlay.hidden = true;
+}
+
+els.inactiveRevive.addEventListener("click", () => {
+  bridge.send({ type: "reviveTab" });
+  hideInactiveOverlay();
+});
+els.inactiveCancel.addEventListener("click", hideInactiveOverlay);
+
+// ── Toast (transient error display) ──────────────────────────────────────────
+
+let toastTimer: number | undefined;
+function showToast(message: string, durationMs = 4000) {
+  els.toast.textContent = message;
+  els.toast.hidden = false;
+  if (toastTimer !== undefined) window.clearTimeout(toastTimer);
+  toastTimer = window.setTimeout(() => {
+    els.toast.hidden = true;
+  }, durationMs);
+}
+
+// ── Layout ───────────────────────────────────────────────────────────────────
+
+window.addEventListener("resize", fitFrame);
+new ResizeObserver(fitFrame).observe(els.stage);
+
+// ── Mouse / scroll ───────────────────────────────────────────────────────────
+
+const mouseTarget = els.frame;
+
+mouseTarget.addEventListener("contextmenu", (e) => e.preventDefault());
+
+mouseTarget.addEventListener("mousedown", (e) => {
+  e.preventDefault();
+  els.stage.focus();
+});
+
+mouseTarget.addEventListener("click", (e) => {
+  e.preventDefault();
+  if (!isVisible) {
+    // The screen frame is stale (Chrome stops compositing backgrounded tabs).
+    // Treat any click as "wake this tab back up" rather than a misdirected
+    // click on a frozen image.
+    bridge.send({ type: "refocus" });
+    return;
+  }
+  const { x, y } = pointToViewport(e);
+  bridge.send({
+    type: "click",
+    x,
+    y,
+    button: e.button === 2 ? "right" : e.button === 1 ? "middle" : "left",
+    clickCount: e.detail || 1,
+    modifiers: modifiersFromEvent(e),
+  });
+});
+
+mouseTarget.addEventListener("auxclick", (e) => {
+  if (e.button !== 1 && e.button !== 2) return;
+  e.preventDefault();
+  if (!isVisible) {
+    bridge.send({ type: "refocus" });
+    return;
+  }
+  const { x, y } = pointToViewport(e);
+  bridge.send({
+    type: "click",
+    x,
+    y,
+    button: e.button === 2 ? "right" : "middle",
+    clickCount: e.detail || 1,
+    modifiers: modifiersFromEvent(e),
+  });
+});
+
+let lastMoveAt = 0;
+mouseTarget.addEventListener("mousemove", (e) => {
+  if (!isVisible) return; // don't dispatch into a stale frame
+  // Throttle to ~30 fps to avoid drowning the bridge in mousemove traffic.
+  const now = performance.now();
+  if (now - lastMoveAt < 33) return;
+  lastMoveAt = now;
+  const { x, y } = pointToViewport(e);
+  bridge.send({ type: "mousemove", x, y, modifiers: modifiersFromEvent(e) });
+});
+
+mouseTarget.addEventListener(
+  "wheel",
+  (e) => {
+    e.preventDefault();
+    if (!isVisible) {
+      bridge.send({ type: "refocus" });
+      return;
+    }
+    const { x, y } = pointToViewport(e);
+    bridge.send({
+      type: "scroll",
+      x,
+      y,
+      deltaX: e.deltaX,
+      deltaY: e.deltaY,
+    });
+  },
+  { passive: false },
+);
+
+// ── Keyboard ─────────────────────────────────────────────────────────────────
+
+function isUrlBarFocused(): boolean {
+  return document.activeElement === els.url;
+}
+
+function handleKey(e: KeyboardEvent, phase: "down" | "up") {
+  if (isUrlBarFocused()) return;
+  // Let the user copy/refresh out of the page using browser shortcuts.
+  if ((e.metaKey || e.ctrlKey) && (e.key === "r" || e.key === "R")) return;
+  e.preventDefault();
+  if (!isVisible) {
+    if (phase === "down") bridge.send({ type: "refocus" });
+    return;
+  }
+  // Single printable chars on keydown go through Input.insertText for IME-correct text.
+  if (
+    phase === "down" &&
+    e.key.length === 1 &&
+    !e.ctrlKey &&
+    !e.metaKey &&
+    !e.altKey
+  ) {
+    bridge.send({ type: "type", text: e.key });
+    return;
+  }
+  bridge.send({
+    type: "key",
+    key: e.key,
+    code: e.code,
+    modifiers: modifiersFromEvent(e),
+    phase,
+  });
+}
+
+window.addEventListener("keydown", (e) => handleKey(e, "down"));
+window.addEventListener("keyup", (e) => handleKey(e, "up"));
+
+// ── Toolbar ──────────────────────────────────────────────────────────────────
+
+els.back.addEventListener("click", () => bridge.send({ type: "back" }));
+els.forward.addEventListener("click", () => bridge.send({ type: "forward" }));
+els.reload.addEventListener("click", () => bridge.send({ type: "reload" }));
+
+els.url.addEventListener("focus", () => {
+  urlEditing = true;
+});
+els.url.addEventListener("blur", () => {
+  urlEditing = false;
+});
+
+els.urlForm.addEventListener("submit", (e) => {
+  e.preventDefault();
+  let url = els.url.value.trim();
+  if (!url) return;
+  if (!/^[a-z]+:\/\//i.test(url)) url = `https://${url}`;
+  bridge.send({ type: "navigate", url });
+  els.url.blur();
+});

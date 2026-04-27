@@ -1059,6 +1059,9 @@ export class BrowserSession extends EventEmitter {
       }
       case "type": {
         await this.send("Input.insertText", { text: action.text });
+        // Refresh the cached selection / field state so the client's helper
+        // mirror catches up with the just-inserted text.
+        this.scheduleSelectionPoll();
         return;
       }
       case "key": {

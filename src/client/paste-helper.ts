@@ -177,32 +177,20 @@ export function setupPasteHelper(opts: PasteHelperOptions): PasteHelper {
       });
       return;
     }
+    // Cmd-A is detected in both modes — the padded baseline " <text> " in
+    // selection mode and the field-mirrored value in field mode both sit
+    // strictly inside [0, len], so a full-range selection only happens via
+    // the chord. Ctrl-A / Ctrl-E are caret-positioning text-system commands
+    // that only mean something inside an editable field, so we restrict
+    // those to field mode.
     let detected: string | null = null;
-    if (state.field) {
-      // In field mode the helper mirrors the remote field's value, so a
-      // full-range selection in the helper is unambiguously Cmd-A (the user
-      // can't have produced [0, value.length] by clicking — that would be a
-      // drag-select, which our keydown path doesn't trigger here). Other
-      // chords (Ctrl-A as MoveToBeginningOfLine, Ctrl-E) overlap with valid
-      // caret positions the field could legitimately report, so we leave
-      // those to be forwarded by the keydown handler.
-      if (start === 0 && end === len && len > 0) {
-        detected = "cmd-a";
-        send({ type: "key", key: "a", code: "KeyA", modifiers: ["Meta"], phase: "press" });
-        dbg("selectionchange", { start, end, len, mode, detected });
-        applyState();
-        return;
-      }
-      dbg("selectionchange-skip", { reason: "field-mode", start, end, len });
-      return;
-    }
-    if (start === 0 && end === len) {
+    if (start === 0 && end === len && len > 0) {
       detected = "cmd-a";
       send({ type: "key", key: "a", code: "KeyA", modifiers: ["Meta"], phase: "press" });
-    } else if (start === 0 && end === 0) {
+    } else if (state.field && start === 0 && end === 0) {
       detected = "ctrl-a";
       send({ type: "key", key: "a", code: "KeyA", modifiers: ["Control"], phase: "press" });
-    } else if (start === len && end === len) {
+    } else if (state.field && start === len && end === len) {
       detected = "ctrl-e";
       send({ type: "key", key: "e", code: "KeyE", modifiers: ["Control"], phase: "press" });
     }

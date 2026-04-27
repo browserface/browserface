@@ -126,7 +126,7 @@ function handleServerMessage(msg: ServerMessage) {
       statusBar.setHoverLink(msg.href);
       return;
     case "selection":
-      pasteHelper.setRemoteSelection(msg.text);
+      pasteHelper.setRemoteState({ text: msg.text, field: msg.field });
       return;
     case "error":
       console.warn("[bridge] server error:", msg.message);

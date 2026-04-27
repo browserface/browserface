@@ -221,13 +221,27 @@ export interface HoverMessage {
   href: string | null;
 }
 
-// Plain-text contents of the remote DOM's current selection. Pushed when the
-// selection changes (after click/key actions) so the client can hand it to a
-// `copy` event's clipboardData synchronously — round-tripping the selection
-// at copy time would be too slow.
+// Snapshot of the remote DOM's current selection / focused-field state.
+// Pushed when state changes (after click/key dispatch) so the client can
+// keep its paste-helper input in sync without round-tripping at Cmd-C time.
+//
+// Two modes:
+//  - When `field` is absent, `text` is the plain text of getSelection() on
+//    the page (could be empty). The client mirrors this padded with spaces
+//    into the helper so native Cmd-C copies it.
+//  - When `field` is present, the remote's focused element is an
+//    <input> or <textarea>. The client mirrors the full field value +
+//    selection range into the helper, so arrow-key navigation and visible
+//    caret position match the remote field. `text` in this case is the
+//    selected portion of the field's value (same as Cmd-C would yield).
 export interface SelectionMessage {
   type: "selection";
   text: string;
+  field?: {
+    value: string;
+    selectionStart: number;
+    selectionEnd: number;
+  };
 }
 
 export type ServerMessage =

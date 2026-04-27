@@ -44,6 +44,46 @@ export interface BrowserSessionOptions {
   viewport?: { width: number; height: number; deviceScaleFactor?: number; mobile?: boolean };
 }
 
+// Selection probe payload — what the in-page expression below returns,
+// mirrored on both the cache field and the broadcast event body.
+type SelectionPayload = {
+  text: string;
+  field?: {
+    value: string;
+    selectionStart: number;
+    selectionEnd: number;
+  };
+};
+
+function selectionPayloadEqual(a: SelectionPayload, b: SelectionPayload): boolean {
+  if (a.text !== b.text) return false;
+  const af = a.field;
+  const bf = b.field;
+  if (!af && !bf) return true;
+  if (!af || !bf) return false;
+  return (
+    af.value === bf.value &&
+    af.selectionStart === bf.selectionStart &&
+    af.selectionEnd === bf.selectionEnd
+  );
+}
+
+// Runs in the page's main world. Returns either a `field` payload (when the
+// focused element is an <input> / <textarea>) or just the selection text.
+// JSON-encoded so we can ship a structured value through Runtime.evaluate's
+// returnByValue without dealing with object-graph serialization.
+const SELECTION_PROBE = `JSON.stringify((() => {
+  const ae = document.activeElement;
+  if (ae && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA')) {
+    const v = ae.value || '';
+    const s = ae.selectionStart || 0;
+    const e = ae.selectionEnd || 0;
+    return { text: v.slice(s, e), field: { value: v, selectionStart: s, selectionEnd: e } };
+  }
+  const sel = document.getSelection();
+  return { text: sel ? sel.toString() : '' };
+})())`;
+
 const MODIFIER_BITS: Record<ModifierKey, number> = {
   Alt: 1,
   Control: 2,
@@ -250,11 +290,13 @@ export class BrowserSession extends EventEmitter {
   // means "not yet measured." Cleared on tab switch.
   private chromeBarWidthDiff: number | null = null;
   private chromeBarHeightDiff: number | null = null;
-  // Cached plain-text remote selection. Pushed to clients on change so a copy
-  // event's synchronous clipboardData population doesn't have to wait for a
-  // CDP round-trip. Refreshed after click/key dispatches that could change
-  // selection state.
-  private lastSelectionText = "";
+  // Cached snapshot of remote selection / focused-field state. Pushed to
+  // clients on change so a copy event's synchronous clipboardData
+  // population doesn't have to wait for a CDP round-trip, and so the
+  // paste-helper input can mirror a focused remote text field for arrow-
+  // key navigation. Refreshed after click/key dispatches that could
+  // change either.
+  private lastSelectionState: SelectionPayload = { text: "" };
   private selectionPollTimer: NodeJS.Timeout | null = null;
   private selectionPollPending = false;
 
@@ -668,23 +710,28 @@ export class BrowserSession extends EventEmitter {
     try {
       const evalRes = (await withTimeout(
         this.send<{ result: { value?: unknown } }>("Runtime.evaluate", {
-          expression: "(document.getSelection()?.toString())||''",
+          expression: SELECTION_PROBE,
           returnByValue: true,
         }),
         500,
       )) as { result?: { value?: unknown } } | null;
-      const text = typeof evalRes?.result?.value === "string" ? evalRes.result.value : "";
-      if (text !== this.lastSelectionText) {
-        this.lastSelectionText = text;
-        this.emit("selection", { type: "selection", text });
+      const json = typeof evalRes?.result?.value === "string" ? evalRes.result.value : "";
+      let parsed: SelectionPayload;
+      try {
+        parsed = json ? (JSON.parse(json) as SelectionPayload) : { text: "" };
+      } catch {
+        return;
       }
+      if (selectionPayloadEqual(parsed, this.lastSelectionState)) return;
+      this.lastSelectionState = parsed;
+      this.emit("selection", { type: "selection", ...parsed });
     } catch {
       // ignore — CDP can be momentarily busy mid-navigation
     }
   }
 
   getSelectionText(): string {
-    return this.lastSelectionText;
+    return this.lastSelectionState.text;
   }
 
   private clearHover() {

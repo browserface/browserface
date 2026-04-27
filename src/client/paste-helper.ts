@@ -115,6 +115,23 @@ export function setupPasteHelper(opts: PasteHelperOptions): PasteHelper {
   }
 
   function setRemoteState(next: RemoteState) {
+    // Stale-mirror skip: when the user types faster than the server polls,
+    // an in-flight selection event can arrive carrying the field's earlier
+    // value (a prefix of what we already typed locally). Applying it would
+    // wipe the un-confirmed tail and snap the caret back. Detect and drop
+    // — a fresher mirror is on the way.
+    if (
+      next.field &&
+      document.activeElement === el &&
+      el.value.length > next.field.value.length &&
+      el.value.startsWith(next.field.value)
+    ) {
+      dbg("server-selection-skip-stale", {
+        localLen: el.value.length,
+        mirrorLen: next.field.value.length,
+      });
+      return;
+    }
     state = next;
     applyState();
     dbg("server-selection", {
@@ -170,6 +187,39 @@ export function setupPasteHelper(opts: PasteHelperOptions): PasteHelper {
     const modifiers = modifiersFromEvent(e);
     send({ type: "key", key: e.key, code: e.code, modifiers, phase: "press" });
     dbg("nav-key", { key: e.key, modifiers });
+  });
+
+  // In field mode, observe local edits and forward them to the remote so the
+  // remote text input ends up with the same content. We don't preventDefault
+  // the underlying keystroke — that gives the user immediate visual feedback
+  // in the helper. The mirror update from the server confirms (and overrides
+  // if the remote diverged, e.g. maxlength clamp). In selection mode the
+  // helper isn't editable conceptually, so we ignore input events; any
+  // accidental local mutation is reverted by the selectionchange handler's
+  // applyState() snap-back.
+  el.addEventListener("input", (e) => {
+    if (!state.field) return;
+    const ie = e as InputEvent;
+    const inputType = ie.inputType;
+    if (inputType === "insertFromPaste") return; // handled by paste listener
+    if (inputType === "insertText" || inputType === "insertReplacementText") {
+      if (typeof ie.data === "string" && ie.data.length > 0) {
+        send({ type: "type", text: ie.data });
+        dbg("input-text", { inputType, data: ie.data });
+      }
+      return;
+    }
+    if (inputType === "deleteContentBackward") {
+      send({ type: "key", key: "Backspace", code: "Backspace", phase: "press" });
+      dbg("input-delete", { direction: "backward" });
+      return;
+    }
+    if (inputType === "deleteContentForward") {
+      send({ type: "key", key: "Delete", code: "Delete", phase: "press" });
+      dbg("input-delete", { direction: "forward" });
+      return;
+    }
+    dbg("input-unhandled", { inputType, data: ie.data });
   });
 
   // Cmd-V: route the system clipboard's plain text to the remote as an

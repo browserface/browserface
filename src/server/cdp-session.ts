@@ -199,10 +199,12 @@ function findOnPageScript(query: string, backward: boolean, fromStart: boolean):
   })()`;
 }
 
-// Tears down find state on close: drop the cached ranges, remove highlights,
-// remove the injected stylesheet. Before doing so, promote the active match
-// to a regular text selection (Chrome's native find behavior) so closing the
-// bar leaves the matched text selected for Cmd-C, click-to-dismiss, etc.
+// Tears down the visible find state on close: removes highlights and the
+// injected stylesheet, and promotes the active match to a regular text
+// selection (Chrome's behavior — leaves matched text selected for Cmd-C).
+// We deliberately keep window.__bridgeFind in place so a later Cmd-G can
+// resume from the same query and position rather than re-walking from the
+// top.
 const FIND_STOP_SCRIPT = `(() => {
   const state = window.__bridgeFind;
   if (state && state.current >= 0 && state.ranges && state.ranges[state.current]) {
@@ -212,7 +214,6 @@ const FIND_STOP_SCRIPT = `(() => {
       try { sel.addRange(state.ranges[state.current]); } catch (_) {}
     }
   }
-  delete window.__bridgeFind;
   if (typeof CSS !== 'undefined' && CSS.highlights) {
     CSS.highlights.delete('bridge-find-all');
     CSS.highlights.delete('bridge-find-current');
@@ -952,6 +953,15 @@ export class BrowserSession extends EventEmitter {
     await this.stopScreencast();
     this.clearHover();
     if (oldSessionId) {
+      // Clear find highlights on the outgoing tab so its yellow/orange
+      // overlays don't linger when the user switches back. Fire-and-forget;
+      // the script no-ops if there was no find state.
+      rawSend(
+        this.client,
+        "Runtime.evaluate",
+        { expression: FIND_STOP_SCRIPT, returnByValue: true },
+        oldSessionId,
+      ).catch(() => {});
       // Fire-and-forget — the new session is already established and a slow
       // detach on the old session shouldn't block the switch.
       rawSend(this.client, "Target.detachFromTarget", { sessionId: oldSessionId }).catch(

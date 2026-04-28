@@ -200,8 +200,18 @@ function findOnPageScript(query: string, backward: boolean, fromStart: boolean):
 }
 
 // Tears down find state on close: drop the cached ranges, remove highlights,
-// remove the injected stylesheet so the page renders normally again.
+// remove the injected stylesheet. Before doing so, promote the active match
+// to a regular text selection (Chrome's native find behavior) so closing the
+// bar leaves the matched text selected for Cmd-C, click-to-dismiss, etc.
 const FIND_STOP_SCRIPT = `(() => {
+  const state = window.__bridgeFind;
+  if (state && state.current >= 0 && state.ranges && state.ranges[state.current]) {
+    const sel = window.getSelection();
+    if (sel) {
+      sel.removeAllRanges();
+      try { sel.addRange(state.ranges[state.current]); } catch (_) {}
+    }
+  }
   delete window.__bridgeFind;
   if (typeof CSS !== 'undefined' && CSS.highlights) {
     CSS.highlights.delete('bridge-find-all');

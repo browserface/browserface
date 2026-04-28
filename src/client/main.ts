@@ -47,6 +47,7 @@ const els = {
 
 let viewport: Viewport = { width: 1280, height: 800, deviceScaleFactor: 1 };
 let isVisible = true;
+let activeTabId: string | null = null;
 
 function fitFrame() {
   // Sets the framed image element to the largest size that fits the stage,
@@ -116,9 +117,18 @@ function handleServerMessage(msg: ServerMessage) {
       document.title = msg.title ? `${msg.title} — Browser Interface` : "Browser Interface";
       statusBar.setLoading(msg.loading);
       return;
-    case "tabs":
+    case "tabs": {
+      // Find state (cached ranges, highlights, count) belongs to the page
+      // we attached to. Switching tabs invalidates all of it, so close the
+      // bar — the user can re-open with Cmd-F on the new tab.
+      const nextActive = msg.tabs.find((t) => t.active)?.id ?? null;
+      if (activeTabId !== null && nextActive !== activeTabId && findBar.isVisible()) {
+        findBar.hide();
+      }
+      activeTabId = nextActive;
       tabs.setTabs(msg.tabs);
       return;
+    }
     case "visibility":
       if (msg.visible !== isVisible) {
         isVisible = msg.visible;

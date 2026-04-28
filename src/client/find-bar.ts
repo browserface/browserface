@@ -116,16 +116,23 @@ export function setupFindBar(opts: FindBarOptions): FindBar {
     "keydown",
     (e) => {
       if (!e.metaKey) return;
-      if (e.key === "f") {
+      // Compare case-insensitively — with Shift held, e.key is uppercase
+      // (Shift-Cmd-G arrives as "G", not "g") and would otherwise miss.
+      const k = e.key.toLowerCase();
+      if (k === "f") {
         e.preventDefault();
         e.stopPropagation();
         show();
         return;
       }
-      if (e.key === "g") {
-        if (!lastQuery && !isVisible()) return;
+      if (k === "g") {
         e.preventDefault();
         e.stopPropagation();
+        // Fresh page (no prior search) → just open the bar like Cmd-F.
+        if (!lastQuery && !isVisible()) {
+          show();
+          return;
+        }
         if (!isVisible()) {
           input.value = lastQuery;
           show();

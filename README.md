@@ -104,6 +104,18 @@ For a Chrome running on another machine, run the same command on that machine.
 The output includes a direct `npm start -- --target ...` command and an SSH
 tunnel workflow using `ssh -N -L`.
 
+### Behind ngrok
+
+```sh
+npm start                                                # binds 127.0.0.1:8787
+ngrok http 8787 --oauth google --oauth-allow-email you@example.com
+```
+
+HTTP tunnel only — `/ws` needs the upgrade. CDP stays bound to localhost;
+only the bridge port is exposed. The bridge has no auth of its own, so
+always front it with `--oauth`, `--basic-auth`, or `--cidr-allow` —
+whoever loads the URL drives your browser.
+
 ## Develop
 
 ```sh

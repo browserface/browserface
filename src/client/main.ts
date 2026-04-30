@@ -508,21 +508,35 @@ setupTouch({
 //
 // Two one-tap shortcuts that ship `setViewport`:
 //
-//   - Match size (always visible — replaces the old drag handle): remote =
-//     the frame's available area (stage minus the in-stage status bar).
-//     This is what fitFrame uses, so after the next screencast frame the
-//     remote fills the frame box at 1:1 with no letterboxing.
+//   - Match size (always visible — replaces the old drag handle): resizes
+//     the remote so it fills what the user can actually see. On desktop
+//     that's the frame area (stage − in-stage status bar) so there's no
+//     letterboxing around the screencast; on mobile that's the window
+//     itself, because `body { height: 100% }` measures iOS Safari's
+//     layout viewport (which includes the URL-bar zone), and using it
+//     would leave the remote rendered taller than the visible viewport.
 //
-//   - Desktop size (narrow screens only): remote = (1280, 1280 ×
-//     frameAspect). Wide enough that responsive sites pick the desktop
-//     layout, kept at the frame's aspect so the screencast still fills
-//     the screen without big letterboxing. Trade-off on a phone: tall
-//     content area, more scrolling than a real desktop window.
+//   - Desktop size (narrow screens only): remote = (1280, 1280 × phone-
+//     aspect). Wide enough that responsive sites pick the desktop layout,
+//     kept at the visible viewport's aspect so the screencast fills the
+//     screen without big letterboxing. Trade-off on a phone: tall content
+//     area, more scrolling than a real desktop window.
 const DESKTOP_PRESET_WIDTH = 1280;
-function frameAvailableArea(): { w: number; h: number } {
-  // Tab strip and toolbar live outside the stage, so stage.clientWidth /
-  // clientHeight already excludes them. The status bar lives *inside* the
-  // stage so its height has to be subtracted explicitly. Mirrors fitFrame.
+const MATCH_SIZE_FRAME_BREAKPOINT = 701;
+function matchSizeArea(): { w: number; h: number } {
+  // Below the narrow breakpoint, prefer the visual viewport (or innerWidth/
+  // innerHeight). Mobile-designed pages expect to render at the phone's
+  // actual screen dims; using the smaller frame area would silently shrink
+  // them and the visual viewport handles iOS URL-bar collapse for free.
+  if (window.innerWidth < MATCH_SIZE_FRAME_BREAKPOINT) {
+    const vv = window.visualViewport;
+    return {
+      w: Math.max(1, Math.round(vv?.width ?? window.innerWidth)),
+      h: Math.max(1, Math.round(vv?.height ?? window.innerHeight)),
+    };
+  }
+  // Desktop: subtract the in-stage status bar so the screencast fills the
+  // frame box at 1:1. Tab strip + toolbar live outside the stage already.
   const statusbar = document.querySelector(".statusbar") as HTMLElement | null;
   const statusH = statusbar ? statusbar.offsetHeight : 0;
   return {
@@ -531,11 +545,15 @@ function frameAvailableArea(): { w: number; h: number } {
   };
 }
 els.vpMatchSize.addEventListener("click", () => {
-  const { w, h } = frameAvailableArea();
+  const { w, h } = matchSizeArea();
   bridge.send({ type: "setViewport", width: w, height: h });
 });
 els.vpDesktopSize.addEventListener("click", () => {
-  const { w, h } = frameAvailableArea();
+  // Desktop-size is only visible at narrow widths, so the aspect always
+  // comes from the phone's visible viewport — pinning to matchSizeArea
+  // means the desktop-width window stays at the same shape as the
+  // user's screen, no letterboxing when the frame fits to it.
+  const { w, h } = matchSizeArea();
   bridge.send({
     type: "setViewport",
     width: DESKTOP_PRESET_WIDTH,

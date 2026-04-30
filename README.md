@@ -26,14 +26,14 @@ Bridge (HTTP + WebSocket)
 Client UI (any browser) — and/or agents
 ```
 
-## Install
+## Run
 
 ```sh
-npm install
-npm run build
+browser/face
 ```
 
-## Run
+A thin wrapper around the underlying npm scripts — handles `npm install` and
+`npm run build` on first run, then starts the bridge.
 
 By default browserface attaches to your **already-running daily-driver
 Chrome**. Same trick browser-harness uses: Chrome has a per-profile sticky
@@ -42,10 +42,6 @@ auto-enable CDP on every launch and write the dynamic port to
 `<profile>/DevToolsActivePort`. browserface reads that file, probes the
 port, and connects via the browser-level WebSocket — no `--remote-debugging-port`
 launch flag, no separate Chrome instance.
-
-```sh
-npm start
-```
 
 The first run opens `chrome://inspect/#remote-debugging` for you (via
 AppleScript on macOS). Tick the checkbox, click `Allow`, and the bridge attaches
@@ -57,19 +53,19 @@ Then open <http://127.0.0.1:8787>.
 
 ```sh
 # Skip discovery and connect to a specific CDP port (e.g. headless container):
-npm start -- --host 127.0.0.1 --port 9222
+browser/face --host 127.0.0.1 --port 9222
 
 # Or a specific WS URL (page-level or browser-level):
-npm start -- --target ws://127.0.0.1:9222/devtools/browser/<id>
+browser/face --target ws://127.0.0.1:9222/devtools/browser/<id>
 
 # Print connection commands for an already-running Chrome:
-npm run find-chrome
+browser/find
 
 # Headless Chrome for testing:
 "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" \
   --remote-debugging-port=9222 --headless=new --no-first-run \
   --user-data-dir=/tmp/cdp-profile about:blank &
-npm start -- --port 9222
+browser/face --port 9222
 ```
 
 ### CLI flags

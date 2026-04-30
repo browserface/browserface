@@ -1,0 +1,46 @@
+#!/usr/bin/env bash
+# Thin wrapper around the underlying npm scripts. Lets users run
+# `browser/face` instead of remembering `npm start --` etc.
+#
+#   browser/face                     start bridge with auto-discovery
+#   browser/face --port 9222         start bridge with CLI flags
+#   browser/face dev [...flags]      dev mode (rebuild on changes)
+#   browser/face build               build server + client
+#   browser/face typecheck           tsc --noEmit
+#   browser/face clean               remove dist/
+#
+set -euo pipefail
+
+cd "$(dirname "$0")/.."
+
+# No args, or first arg is a flag → bridge with auto-discovery.
+if [[ $# -eq 0 || "${1:0:1}" == "-" ]]; then
+  [[ -d node_modules ]] || npm install
+  [[ -d dist ]] || npm run build
+  exec npm start -- "$@"
+fi
+
+cmd="$1"; shift
+case "$cmd" in
+  start)
+    [[ -d node_modules ]] || npm install
+    [[ -d dist ]] || npm run build
+    exec npm start -- "$@"
+    ;;
+  dev)
+    [[ -d node_modules ]] || npm install
+    exec npm run dev -- "$@"
+    ;;
+  build|build:server|build:client|typecheck|clean)
+    [[ -d node_modules ]] || npm install
+    exec npm run "$cmd" -- "$@"
+    ;;
+  -h|--help|help)
+    sed -n '2,11p' "$0" | sed 's/^# \{0,1\}//'
+    ;;
+  *)
+    echo "Unknown command: $cmd" >&2
+    echo "Usage: browser/face [start|dev|build|typecheck|clean] [flags]" >&2
+    exit 1
+    ;;
+esac

@@ -863,7 +863,12 @@ export class BrowserSession extends EventEmitter {
                   const t = (e.getAttribute('type') || 'text').toLowerCase();
                   return TEXT_INPUT_TYPES.indexOf(t) !== -1;
                 }
-                return !!e.isContentEditable;
+                if (e.isContentEditable) return true;
+                // ARIA roles that ride on plain divs to act as text inputs —
+                // ProseMirror / Lexical editors, custom searchboxes, etc.
+                const role = e.getAttribute && e.getAttribute('role');
+                if (role === 'textbox' || role === 'searchbox' || role === 'combobox') return true;
+                return false;
               }
               // Walk the stacked hit-list, not just the topmost element.
               // elementsFromPoint includes everything that geometrically

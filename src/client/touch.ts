@@ -30,20 +30,17 @@ export interface TouchOptions {
   // i.e. `viewport.width / frame.clientWidth`. Used to scale finger-drag
   // deltas into remote-pixel scroll deltas.
   getRemoteToLocalScale: () => number;
-  // Whether the latest hover message from the server reported an
-  // editable target at the tracked position. We dispatch a mousemove on
-  // touchstart so the server's hover poll runs at the tap coords; this
-  // getter returns the result inside the touchend handler, giving the
-  // tap a synchronous predictor of "did the user tap into a field?".
-  getLastCursorEditable: () => boolean;
+  // Called when we dispatch the touchstart hover probe so the host can
+  // mark "probe in flight" — used by focusPasteHelperOnTap as the
+  // tie-breaker when touchend fires before the response comes back.
+  onProbeStart: () => void;
   // Called from inside the tap's touchend handler so a focus call lands
   // gesture-bound (iOS only pops the OS keyboard when focus happens
   // synchronously inside a user gesture; a focus from a WebSocket
   // onmessage callback fired ~100ms later is silently rejected for
-  // keyboard purposes). Receives a synchronous prediction of whether
-  // the tap landed on an editable target (input, textarea, or
-  // contenteditable) so the caller can decide whether to focus.
-  focusPasteHelperOnTap: (predictedEditable: boolean) => void;
+  // keyboard purposes). The host decides whether to actually focus
+  // based on its own state (predictor, in-flight probe, remote field).
+  focusPasteHelperOnTap: () => void;
 }
 
 const TAP_THRESHOLD_PX = 10;
@@ -54,7 +51,7 @@ export function setupTouch(opts: TouchOptions): void {
     send,
     pointToViewport,
     getRemoteToLocalScale,
-    getLastCursorEditable,
+    onProbeStart,
     focusPasteHelperOnTap,
   } = opts;
 
@@ -99,6 +96,7 @@ export function setupTouch(opts: TouchOptions): void {
       // OS keyboard inside the gesture; worst case the user taps twice.
       const { x, y } = pointToViewport(t);
       console.log("[probe] touchstart-dispatch", { x: Math.round(x), y: Math.round(y) });
+      onProbeStart();
       send({ type: "mousemove", x, y, buttons: [] });
     },
     { passive: true },
@@ -156,25 +154,19 @@ export function setupTouch(opts: TouchOptions): void {
     }
     if (!scrolling) {
       // Tap — fire press + release at the start coords so the remote sees
-      // a real click. Then ask the host to focus the paste helper inside
-      // this gesture if the tap landed on an editable target. iOS only
-      // pops the OS keyboard for focus calls that happen synchronously
-      // inside a user gesture; a focus from a WebSocket onmessage
-      // callback ~100ms later is silently rejected for keyboard
-      // purposes. The `predictedEditable` boolean is set from the
-      // touchstart-dispatched hover probe; if the probe round-trip
-      // loses the race, the user's second tap usually has the
-      // updated cursor info in time.
+      // a real click. The host decides synchronously whether to focus
+      // the paste helper based on its own state (last-known editable,
+      // in-flight probe, remote field). iOS only pops the OS keyboard
+      // for focus calls that happen synchronously inside a user
+      // gesture; a focus from a WebSocket onmessage callback ~100ms
+      // later is silently rejected for keyboard purposes — that's why
+      // the focus call has to be invoked from here rather than from
+      // the selection-message handler.
       const { x, y } = pointToViewport({ clientX: startX, clientY: startY });
       send({ type: "mousedown", x, y, button: "left", clickCount: 1 });
       send({ type: "mouseup", x, y, button: "left", clickCount: 1 });
-      const editable = getLastCursorEditable();
-      console.log("[probe] touchend-decision", {
-        x: Math.round(x),
-        y: Math.round(y),
-        predictedEditable: editable,
-      });
-      focusPasteHelperOnTap(editable);
+      console.log("[probe] touchend-decision", { x: Math.round(x), y: Math.round(y) });
+      focusPasteHelperOnTap();
     }
     scrolling = false;
   });

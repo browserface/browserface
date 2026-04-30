@@ -64,6 +64,15 @@ let remoteHasField = false;
 // from `cursor === 'text'` because plain page text glyphs also produce
 // the I-beam cursor without being editable.
 let lastCursorEditable = false;
+// True between a touchstart-dispatched hover probe and the matching
+// hover response — i.e., we don't yet know what the user just tapped.
+// On a tap that lands while still in flight, the touch handler
+// speculatively force-focuses the helper so a slow probe doesn't
+// cost the user a second tap on a real field. The selection-handler
+// blur path dismisses the keyboard ~100ms later if the click turned
+// out to be on a non-editable. Net: every field works first-tap;
+// non-editable taps only flash when the probe is unusually slow.
+let probeInFlight = false;
 const isCoarsePointer =
   typeof window.matchMedia === "function" && window.matchMedia("(pointer: coarse)").matches;
 
@@ -163,6 +172,7 @@ function handleServerMessage(msg: ServerMessage) {
       // link shows pointer, an input shows the I-beam, etc.
       els.frame.style.cursor = msg.cursor || "default";
       lastCursorEditable = !!msg.editable;
+      probeInFlight = false;
       console.log("[probe] hover-received", {
         cursor: msg.cursor,
         editable: !!msg.editable,
@@ -575,19 +585,26 @@ setupTouch({
     const local = els.frame.clientWidth;
     return local > 0 ? viewport.width / local : 1;
   },
-  getLastCursorEditable: () => lastCursorEditable,
-  focusPasteHelperOnTap: (predictedEditable) => {
-    // Focus the helper inside the touch gesture when we believe the
-    // tap landed on an editable target — either the cursor predictor
-    // says so (touchstart-dispatched hover probe came back in time) or
-    // the remote already has a field focused (tapping the same input
-    // again). Anything else: don't focus, so the keyboard doesn't pop
-    // for taps on plain text or images. Uses forceFocus (blur +
-    // focus) so iOS sees a fresh focus transition even when the
-    // helper was already focused from a prior selection-handler call
-    // — that earlier focus didn't pop the keyboard (out of gesture)
-    // and a plain focus() now would be a no-op.
-    if (predictedEditable || remoteHasField) pasteHelper.forceFocus();
+  onProbeStart: () => {
+    probeInFlight = true;
+  },
+  focusPasteHelperOnTap: () => {
+    // Force-focus the helper inside the touch gesture if we have any
+    // signal that the tap might land on an editable target:
+    //   - lastCursorEditable: the touchstart probe completed and said
+    //     yes (deterministic).
+    //   - remoteHasField: the remote was already on a field before the
+    //     tap (covers tapping the same input twice).
+    //   - probeInFlight: the touchstart probe hasn't returned yet, so
+    //     we don't know — speculate. Selection handler dismisses the
+    //     keyboard ~100ms later if the click turned out non-editable.
+    // Everything else: don't focus, so plain text / image taps don't
+    // flash the keyboard. Uses forceFocus (blur + focus) so iOS sees
+    // a fresh focus transition even when the helper was already
+    // focused from a prior selection-handler call.
+    if (lastCursorEditable || remoteHasField || probeInFlight) {
+      pasteHelper.forceFocus();
+    }
   },
 });
 

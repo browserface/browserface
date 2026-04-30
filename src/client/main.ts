@@ -163,6 +163,11 @@ function handleServerMessage(msg: ServerMessage) {
       // link shows pointer, an input shows the I-beam, etc.
       els.frame.style.cursor = msg.cursor || "default";
       lastCursorEditable = !!msg.editable;
+      console.log("[probe] hover-received", {
+        cursor: msg.cursor,
+        editable: !!msg.editable,
+        href: msg.href,
+      });
       return;
     case "selection":
       pasteHelper.setRemoteState({ text: msg.text, field: msg.field });

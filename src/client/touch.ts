@@ -98,6 +98,7 @@ export function setupTouch(opts: TouchOptions): void {
       // the result lands in time and the next tap on a field pops the
       // OS keyboard inside the gesture; worst case the user taps twice.
       const { x, y } = pointToViewport(t);
+      console.log("[probe] touchstart-dispatch", { x: Math.round(x), y: Math.round(y) });
       send({ type: "mousemove", x, y, buttons: [] });
     },
     { passive: true },
@@ -165,7 +166,13 @@ export function setupTouch(opts: TouchOptions): void {
       const { x, y } = pointToViewport({ clientX: startX, clientY: startY });
       send({ type: "mousedown", x, y, button: "left", clickCount: 1 });
       send({ type: "mouseup", x, y, button: "left", clickCount: 1 });
-      focusPasteHelperOnTap(getLastCursorEditable());
+      const editable = getLastCursorEditable();
+      console.log("[probe] touchend-decision", {
+        x: Math.round(x),
+        y: Math.round(y),
+        predictedEditable: editable,
+      });
+      focusPasteHelperOnTap(editable);
     }
     scrolling = false;
   });

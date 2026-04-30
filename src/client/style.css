@@ -882,6 +882,36 @@ body.dragging-sidebar .toolbar {
   #vp-match-size {
     margin-left: 0;
   }
+
+  /* Vertical sidebar as an overlay (not a push). On desktop, vertical mode
+     turns the tabs into a left-side sidebar that takes layout width and
+     pushes the rest of the bridge UI rightward. There's not enough screen
+     width on a phone for that to work, so override: keep body in column
+     layout, take the tabs out of the flex flow with position:fixed, and
+     float the sidebar over the page from the left edge. The hamburger
+     stays visible and tappable so the user can dismiss the sidebar the
+     same way they opened it. */
+  body.orient-vertical {
+    flex-direction: column;
+    border-top: none;
+  }
+
+  body.orient-vertical .tabs {
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    width: var(--tab-sidebar-width);
+    z-index: 50;
+    box-shadow: 4px 0 20px rgba(0, 0, 0, 0.45);
+  }
+
+  body.orient-vertical .orient-toggle {
+    /* Override the desktop rule that hides the toggle while the sidebar
+       is open; on mobile the user needs it to close the overlay. */
+    display: inline-flex;
+    z-index: 60;
+  }
 }
 
 /* ── Coarse pointer (phone, tablet, touchscreen kiosk) ──────────────────────
@@ -892,7 +922,6 @@ body.dragging-sidebar .toolbar {
    horizontal mode at startup, so the vertical sidebar layout never loads
    on mobile. */
 @media (pointer: coarse) {
-  .orient-toggle,
   .sidebar-resize,
   .cdp-endpoint,
   .fps,
@@ -906,6 +935,14 @@ body.dragging-sidebar .toolbar {
   .nav {
     width: 36px;
     height: 36px;
+  }
+
+  /* Hamburger gets a real tap target on coarse pointers without growing the
+     visible glyph — keeps the toolbar visually unchanged. */
+  .orient-toggle {
+    width: 36px;
+    height: 36px;
+    top: 4px;
   }
 
   /* Taller status bar on mobile so the viewport-preset buttons get real

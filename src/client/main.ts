@@ -247,14 +247,8 @@ type Orient = "horizontal" | "vertical";
 function applyOrient(o: Orient) {
   document.body.classList.toggle("orient-vertical", o === "vertical");
 }
-// Coarse pointer = phone / tablet / kiosk. The vertical sidebar mode is
-// unusable below ~700px and the orient toggle is hidden by mobile CSS, so
-// force horizontal regardless of the persisted preference. Desktop users
-// keep their stored choice.
-const isCoarsePointer =
-  typeof window.matchMedia === "function" && window.matchMedia("(pointer: coarse)").matches;
 const storedOrient = localStorage.getItem(ORIENT_KEY);
-applyOrient(!isCoarsePointer && storedOrient === "vertical" ? "vertical" : "horizontal");
+applyOrient(storedOrient === "vertical" ? "vertical" : "horizontal");
 
 function applySidebarWidth(px: number) {
   const clamped = Math.max(SIDEBAR_MIN, Math.min(SIDEBAR_MAX, Math.round(px)));

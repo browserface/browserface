@@ -851,26 +851,40 @@ export class BrowserSession extends EventEmitter {
             // rect), and the client needs to tell the two cases apart for
             // decisions like whether a tap should pop the OS keyboard.
             expression: `(()=>{
-              const el = document.elementFromPoint(${x}, ${y});
-              if (!el) return { href: null, cursor: 'default', editable: false };
-              let cursor = 'auto';
+              const x = ${x}, y = ${y};
+              const stack = document.elementsFromPoint(x, y);
+              const top = stack[0];
+              if (!top) return { href: null, cursor: 'default', editable: false };
+              const TEXT_INPUT_TYPES = ['text','search','email','url','tel','password','number'];
+              function isEditableEl(e) {
+                if (!e) return false;
+                if (e.tagName === 'TEXTAREA') return true;
+                if (e.tagName === 'INPUT') {
+                  const t = (e.getAttribute('type') || 'text').toLowerCase();
+                  return TEXT_INPUT_TYPES.indexOf(t) !== -1;
+                }
+                return !!e.isContentEditable;
+              }
+              // Walk the stacked hit-list, not just the topmost element.
+              // elementsFromPoint includes everything that geometrically
+              // contains the point — the input, its wrapper div, body,
+              // html — so a tap inside an input that's wrapped by a
+              // styled container (icon + input flex row, etc.) still
+              // finds the input even when the wrapper is the literal
+              // pointer target.
               let editable = false;
-              for (let cur = el; cur && cur !== document.documentElement; cur = cur.parentElement) {
+              for (let i = 0; i < stack.length; i++) {
+                if (isEditableEl(stack[i])) { editable = true; break; }
+              }
+              let cursor = 'auto';
+              for (let cur = top; cur && cur !== document.documentElement; cur = cur.parentElement) {
                 const cs = window.getComputedStyle(cur);
                 if (cs.cursor && cs.cursor !== 'auto') { cursor = cs.cursor; break; }
               }
               if (cursor === 'auto') {
-                if (el.closest('a[href]')) cursor = 'pointer';
-                else if (el.closest('textarea, [contenteditable=true], [contenteditable=""]')) {
-                  cursor = 'text';
-                  editable = true;
-                }
-                else if (el.closest('input')) {
-                  const t = (el.closest('input').getAttribute('type') || 'text').toLowerCase();
-                  const isTextInput = (t === 'text' || t === 'search' || t === 'email' || t === 'url' || t === 'tel' || t === 'password' || t === 'number');
-                  cursor = isTextInput ? 'text' : 'default';
-                  editable = isTextInput;
-                } else {
+                if (top.closest('a[href]')) cursor = 'pointer';
+                else if (editable) cursor = 'text';
+                else {
                   // Plain page text — show the I-beam only when the point is
                   // actually inside a glyph rect, not just somewhere over a
                   // text-containing element. Browsers do roughly this: hover
@@ -910,7 +924,7 @@ export class BrowserSession extends EventEmitter {
                   cursor = isText ? 'text' : 'default';
                 }
               }
-              const a = el.closest('a');
+              const a = top.closest('a');
               return { href: (a && a.href) || null, cursor, editable };
             })()`,
             returnByValue: true,
@@ -1336,6 +1350,16 @@ export class BrowserSession extends EventEmitter {
         // press, then unrelated motion, then a release, and the selection
         // never extends.
         const button: MouseButton | "none" = buttonsHeld[0] ?? "none";
+        // Update the cached coords and kick off the hover probe BEFORE
+        // awaiting the dispatchMouseEvent. The probe runs an independent
+        // Runtime.evaluate against the current DOM state and doesn't
+        // depend on the renderer having processed the mouseMoved, so
+        // letting the two CDP calls overlap saves ~50–100ms on the
+        // touch-start latency path that mobile relies on for editable-
+        // area prediction.
+        this.lastMouseX = action.x;
+        this.lastMouseY = action.y;
+        this.scheduleHoverCheck();
         await this.send("Input.dispatchMouseEvent", {
           type: "mouseMoved",
           x: action.x,
@@ -1344,9 +1368,6 @@ export class BrowserSession extends EventEmitter {
           buttons,
           modifiers: modifierMask(action.modifiers),
         });
-        this.lastMouseX = action.x;
-        this.lastMouseY = action.y;
-        this.scheduleHoverCheck();
         return;
       }
       case "scroll": {

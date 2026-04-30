@@ -1,10 +1,10 @@
 {
-  "name": "browser-interface",
+  "name": "browserface",
   "version": "0.1.0",
   "description": "Lightweight human interface for live browser sessions over CDP",
   "type": "module",
   "bin": {
-    "browser-interface": "dist/server/cli.js"
+    "browserface": "dist/server/cli.js"
   },
   "main": "dist/server/index.js",
   "types": "dist/server/index.d.ts",

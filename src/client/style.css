@@ -880,6 +880,7 @@ body.resizing {
   height: 22px;
   padding: 0;
   border: none;
+  outline: none;
   background: transparent;
   color: var(--fg-dim);
   cursor: pointer;
@@ -887,12 +888,16 @@ body.resizing {
   justify-content: center;
   opacity: 0.7;
   transition: opacity 120ms ease, color 120ms ease;
+  /* Suppress iOS Safari's grey tap highlight on press. */
+  -webkit-tap-highlight-color: transparent;
 }
 
 .vp-preset:hover,
-.vp-preset:active {
+.vp-preset:active,
+.vp-preset:focus {
   opacity: 1;
   color: var(--fg);
+  outline: none;
 }
 
 .vp-preset svg {
@@ -902,6 +907,15 @@ body.resizing {
 @media (max-width: 700px) {
   .vp-preset {
     display: inline-flex;
+    /* Tap-target sized — Apple HIG min is 44×44, we get close enough at 40
+       without ballooning the status bar's right edge past the screencast. */
+    width: 40px;
+    height: 40px;
+  }
+
+  .vp-preset svg {
+    width: 20px;
+    height: 20px;
   }
 }
 
@@ -928,6 +942,16 @@ body.resizing {
   .nav {
     width: 36px;
     height: 36px;
+  }
+
+  /* Taller status bar on mobile so the viewport-preset buttons get real
+     tap-target height. The buttons themselves are sized inside the
+     .vp-preset rules above. */
+  .statusbar {
+    min-height: 44px;
+    padding-top: 2px;
+    padding-bottom: 2px;
+    padding-right: 2px;
   }
 
   .tab {

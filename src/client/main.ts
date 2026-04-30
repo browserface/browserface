@@ -249,13 +249,9 @@ const SIDEBAR_CLOSE_AT = 60;
 const SIDEBAR_OPEN_DEFAULT = 240;
 const SIDEBAR_OPEN_FLOOR = 180;
 
-// Single source of truth (TS side) for the narrow-viewport breakpoint —
-// used here for runtime decisions (close-sidebar-on-tap-outside scoping,
-// match-size area calculation). The CSS half lives in style.css as
-// `@media (max-width: 700px)` / `@media (min-width: 701px)` and has to
-// be kept in sync manually: media queries can't read CSS variables, so
-// neither side can compute from the other. If you change one, change
-// the other (search for "MOBILE_BP" / "MOBILE-BP-CSS").
+// Narrow-viewport breakpoint. The CSS half lives in style.css under the
+// `MOBILE-BP-CSS` marker; media queries can't read CSS variables, so
+// changing the value means editing both sides.
 const MOBILE_BP = 701;
 type Orient = "horizontal" | "vertical";
 function applyOrient(o: Orient) {

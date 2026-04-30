@@ -79,15 +79,13 @@ body {
 }
 
 /* ── Vertical orientation: desktop layout push ──────────────────────────────
-   On desktop, vertical mode morphs the .tabs strip into a left-side sidebar
-   that pushes the rest of the bridge UI rightward. On mobile (handled in
-   the @media (max-width: 700px) block far below) vertical mode means
-   something different — a separate overlay sidebar — so these rules are
-   scoped to ≥701px.
+   On desktop, vertical mode morphs the .tabs strip into a left-side
+   sidebar that pushes the rest of the bridge UI rightward. On mobile —
+   handled by the narrow-viewport block farther down — vertical mode
+   means something different (a separate overlay sidebar), so these
+   rules are scoped to the wide branch.
 
-   MOBILE-BP-CSS: the 700/701px breakpoint here mirrors `MOBILE_BP` in
-   main.ts. Media queries can't read CSS variables, so the value is
-   duplicated. Keep both sides in sync. */
+   MOBILE-BP-CSS: the breakpoint mirrors `MOBILE_BP` in main.ts. */
 @media (min-width: 701px) {
   body.orient-vertical {
     flex-direction: row;

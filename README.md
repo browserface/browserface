@@ -32,9 +32,6 @@ Client UI (any browser) — and/or agents
 browser/face
 ```
 
-A thin wrapper around the underlying npm scripts — handles `npm install` and
-`npm run build` on first run, then starts the bridge.
-
 By default browserface attaches to your **already-running daily-driver
 Chrome**. Same trick browser-harness uses: Chrome has a per-profile sticky
 toggle at `chrome://inspect/#remote-debugging` that, once ticked, makes Chrome
@@ -86,19 +83,28 @@ browser/face --port 9222
 
 ### Finding Chrome targets
 
-`npm run find-chrome` reads Chrome's `DevToolsActivePort` file and prints
+`browser/find` reads Chrome's `DevToolsActivePort` file and prints
 ready-to-run commands for connecting browserface to that Chrome. Run it
 on the machine where Chrome is running.
 
 For a local Chrome:
 
 ```sh
-npm run find-chrome
+browser/find
 ```
 
 For a Chrome running on another machine, run the same command on that machine.
-The output includes a direct `npm start -- --target ...` command and an SSH
+The output includes a direct `browser/face --target ...` command and an SSH
 tunnel workflow using `ssh -N -L`.
+
+### Sharing
+
+```sh
+browser/share --oauth google --oauth-allow-email you@example.com
+```
+
+`browser/share` exposes the bridge over a public URL. See the script's
+header for available auth flags and the security caveat.
 
 ## Develop
 

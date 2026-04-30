@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+# Wrapper around ngrok that defaults to forwarding the bridge port (8787).
+# Pass any extra ngrok flags through, e.g.:
+#
+#   browser/share --oauth google --oauth-allow-email you@example.com
+#
+# The bridge has no auth of its own, so always front it with --oauth,
+# --basic-auth, or --cidr-allow — whoever loads the URL drives your browser.
+set -euo pipefail
+
+if ! command -v ngrok >/dev/null 2>&1; then
+  echo "ngrok not found. Install it from https://ngrok.com/download" >&2
+  exit 1
+fi
+
+# No args, or first arg is a flag → forward port 8787 with the flags.
+if [[ $# -eq 0 || "${1:0:1}" == "-" ]]; then
+  exec ngrok http 8787 "$@"
+fi
+
+exec ngrok "$@"

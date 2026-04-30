@@ -869,6 +869,42 @@ body.resizing {
   display: none;
 }
 
+/* Viewport preset buttons (phone size / desktop width at phone aspect). Only
+   shown at narrow widths via the media query below — they'd be redundant
+   with the resize-handle drag at desktop sizes. Visual style mirrors the
+   resize handle so the right edge of the status bar reads as one cluster. */
+.vp-preset {
+  display: none;
+  flex: 0 0 auto;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--fg-dim);
+  cursor: pointer;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.7;
+  transition: opacity 120ms ease, color 120ms ease;
+}
+
+.vp-preset:hover,
+.vp-preset:active {
+  opacity: 1;
+  color: var(--fg);
+}
+
+.vp-preset svg {
+  display: block;
+}
+
+@media (max-width: 700px) {
+  .vp-preset {
+    display: inline-flex;
+  }
+}
+
 /* ── Coarse pointer (phone, tablet, touchscreen kiosk) ──────────────────────
    First-pass mobile adjustments. Hides desktop-only chrome that depends on
    precise pointing or doesn't fit, enlarges tap targets, and hands single-

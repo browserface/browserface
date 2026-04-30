@@ -46,6 +46,8 @@ const els = {
   findClose: document.getElementById("find-close") as HTMLButtonElement,
   orientToggle: document.getElementById("orient-toggle") as HTMLButtonElement,
   sidebarResize: document.getElementById("sidebar-resize") as HTMLDivElement,
+  vpPresetMobile: document.getElementById("vp-preset-mobile") as HTMLButtonElement,
+  vpPresetDesktopNarrow: document.getElementById("vp-preset-desktop-narrow") as HTMLButtonElement,
 };
 
 let viewport: Viewport = { width: 1280, height: 800, deviceScaleFactor: 1 };
@@ -512,5 +514,40 @@ setupTouch({
     return local > 0 ? viewport.width / local : 1;
   },
   focusPasteHelper: () => pasteHelper.focus(),
+});
+
+// ── Viewport preset buttons (narrow screens) ─────────────────────────────────
+//
+// Two one-tap shortcuts for resizing the *remote* browser window — exposed
+// via CSS only at narrow widths (the same buttons would be redundant with
+// the resize-handle drag on a desktop). Both ship a `setViewport` action,
+// same code path the resize handle uses.
+//
+//   - Phone preset: remote = (window.innerWidth, window.innerHeight). The
+//     remote page sees a viewport equal to the user's phone screen, so
+//     responsive sites pick their mobile layout. The screencast frame
+//     renders ~1:1 in the bridge UI.
+//
+//   - Desktop-aspect-mobile preset: remote = (1280, 1280 × phoneAspect).
+//     Wide enough that responsive sites pick the desktop layout, but kept
+//     at the phone's portrait aspect so the screencast frame still fills
+//     the user's screen without big letterboxing. Trade-off: very tall
+//     content area, more scrolling than a real desktop window.
+const DESKTOP_PRESET_WIDTH = 1280;
+els.vpPresetMobile.addEventListener("click", () => {
+  bridge.send({
+    type: "setViewport",
+    width: window.innerWidth,
+    height: window.innerHeight,
+  });
+});
+els.vpPresetDesktopNarrow.addEventListener("click", () => {
+  const w = window.innerWidth || 1;
+  const h = window.innerHeight || 1;
+  bridge.send({
+    type: "setViewport",
+    width: DESKTOP_PRESET_WIDTH,
+    height: Math.round((DESKTOP_PRESET_WIDTH * h) / w),
+  });
 });
 

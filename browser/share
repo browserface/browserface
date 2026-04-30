@@ -1,11 +1,14 @@
 #!/usr/bin/env bash
 # Wrapper around ngrok that defaults to forwarding the bridge port (8787).
+# Install ngrok from https://ngrok.com/download if it isn't already.
 # Pass any extra ngrok flags through, e.g.:
 #
 #   browser/share --oauth google --oauth-allow-email you@example.com
 #
-# The bridge has no auth of its own, so always front it with --oauth,
-# --basic-auth, or --cidr-allow — whoever loads the URL drives your browser.
+# HTTP tunnel only — /ws needs the upgrade. CDP stays bound to localhost;
+# only the bridge port is exposed. The bridge has no auth of its own, so
+# always front it with --oauth, --basic-auth, or --cidr-allow — whoever
+# loads the URL drives your browser.
 set -euo pipefail
 
 if ! command -v ngrok >/dev/null 2>&1; then

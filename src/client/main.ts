@@ -95,7 +95,7 @@ function handleServerMessage(msg: ServerMessage) {
     case "ready":
       viewport = msg.viewport;
       toolbar.setUrl(msg.url);
-      document.title = msg.title ? `${msg.title} — Browser Interface` : "Browser Interface";
+      document.title = msg.title ? `${msg.title} — Browserface` : "Browserface";
       statusBar.setCdpEndpoint(msg.cdpEndpoint ?? "");
       fitFrame();
       return;
@@ -116,7 +116,7 @@ function handleServerMessage(msg: ServerMessage) {
     }
     case "page":
       toolbar.setUrl(msg.url);
-      document.title = msg.title ? `${msg.title} — Browser Interface` : "Browser Interface";
+      document.title = msg.title ? `${msg.title} — Browserface` : "Browserface";
       statusBar.setLoading(msg.loading);
       return;
     case "tabs": {
@@ -237,8 +237,8 @@ els.tabs.addEventListener(
 );
 
 // ── Tab orientation (horizontal strip ⇄ vertical sidebar) ────────────────
-const ORIENT_KEY = "browser-interface:orient";
-const SIDEBAR_KEY = "browser-interface:sidebar-width";
+const ORIENT_KEY = "browserface:orient";
+const SIDEBAR_KEY = "browserface:sidebar-width";
 const SIDEBAR_MIN = 80;
 const SIDEBAR_MAX = 480;
 // Below this, dragging snaps the sidebar shut and switches back to the

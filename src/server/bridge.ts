@@ -50,7 +50,7 @@ export async function startBridge(opts: BridgeOptions = {}): Promise<BridgeHandl
     sessionOpts.target = ep.browserWsUrl;
     cdpEndpoint = `${ep.host}:${ep.port}`;
     console.log(
-      `[browser-interface] discovered Chrome at ${ep.host}:${ep.port} (profile: ${ep.profileDir})`,
+      `[browserface] discovered Chrome at ${ep.host}:${ep.port} (profile: ${ep.profileDir})`,
     );
   } else if (sessionOpts.host && sessionOpts.port) {
     cdpEndpoint = `${sessionOpts.host}:${sessionOpts.port}`;
@@ -66,7 +66,7 @@ export async function startBridge(opts: BridgeOptions = {}): Promise<BridgeHandl
 
   const httpServer = createServer((req, res) => {
     handleStatic(req, res, staticDir).catch((err) => {
-      console.error("[browser-interface] static error:", err);
+      console.error("[browserface] static error:", err);
       res.statusCode = 500;
       res.end("internal error");
     });
@@ -91,7 +91,7 @@ export async function startBridge(opts: BridgeOptions = {}): Promise<BridgeHandl
       try {
         await session.syncToActiveTab();
       } catch (err) {
-        console.error("[browser-interface] syncToActiveTab failed:", err);
+        console.error("[browserface] syncToActiveTab failed:", err);
       }
       const viewport = session.getViewport();
       const page = session.getPage();
@@ -181,7 +181,7 @@ export async function startBridge(opts: BridgeOptions = {}): Promise<BridgeHandl
   await new Promise<void>((res) => httpServer.listen(port, host, res));
   const addr = httpServer.address();
   const boundPort = typeof addr === "object" && addr ? addr.port : port;
-  console.log(`[browser-interface] listening on http://${host}:${boundPort}`);
+  console.log(`[browserface] listening on http://${host}:${boundPort}`);
 
   return {
     port: boundPort,

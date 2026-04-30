@@ -497,7 +497,7 @@ export class BrowserSession extends EventEmitter {
       try {
         await this.send(`${domain}.enable`, {});
       } catch (err) {
-        console.warn(`[browser-interface] enable ${domain} failed:`, err);
+        console.warn(`[browserface] enable ${domain} failed:`, err);
       }
     }
 
@@ -544,7 +544,7 @@ export class BrowserSession extends EventEmitter {
     try {
       await rawSend(client, "Target.setDiscoverTargets", { discover: true });
     } catch (err) {
-      console.warn("[browser-interface] Target.setDiscoverTargets failed:", err);
+      console.warn("[browserface] Target.setDiscoverTargets failed:", err);
     }
     this.emitTabs();
 
@@ -671,7 +671,7 @@ export class BrowserSession extends EventEmitter {
             const next = this.tabs.keys().next().value as string | undefined;
             if (next) {
               void this.switchToTarget(next).catch((err) =>
-                console.error("[browser-interface] auto-switch failed:", err),
+                console.error("[browserface] auto-switch failed:", err),
               );
             } else {
               this.sessionId = null;
@@ -1073,7 +1073,7 @@ export class BrowserSession extends EventEmitter {
       try {
         await withTimeout(this.send(`${domain}.enable`), DOMAIN_TIMEOUT_MS);
       } catch (err) {
-        console.warn(`[browser-interface] enable ${domain} failed:`, err);
+        console.warn(`[browserface] enable ${domain} failed:`, err);
       }
     }
 
@@ -1169,7 +1169,7 @@ export class BrowserSession extends EventEmitter {
       await this.send("Page.startScreencast", params);
       this.screencasting = true;
     } catch (err) {
-      console.error("[browser-interface] startScreencast failed:", err);
+      console.error("[browserface] startScreencast failed:", err);
     }
   }
 
@@ -1329,7 +1329,7 @@ export class BrowserSession extends EventEmitter {
         // also execute the named editing command after the synthesized event,
         // which is what makes Cmd-A actually select all (and similar) work.
         const commands = editorCommandsFor(action.key, action.modifiers);
-        console.log("[browser-interface] key", {
+        console.log("[browserface] key", {
           phase: action.phase,
           key: action.key,
           code: action.code,
@@ -1462,7 +1462,7 @@ export class BrowserSession extends EventEmitter {
             })) as { windowId: number };
             this.windowId = res.windowId;
           } catch (err) {
-            console.warn("[browser-interface] getWindowForTarget failed:", err);
+            console.warn("[browserface] getWindowForTarget failed:", err);
             return;
           }
         }
@@ -1484,7 +1484,7 @@ export class BrowserSession extends EventEmitter {
             osW = bounds.width;
             osH = bounds.height;
           } catch (err) {
-            console.warn("[browser-interface] getWindowBounds failed:", err);
+            console.warn("[browserface] getWindowBounds failed:", err);
           }
           try {
             const evalRes = (await this.send("Runtime.evaluate", {
@@ -1496,7 +1496,7 @@ export class BrowserSession extends EventEmitter {
             if (typeof v.w === "number") contentW = v.w;
             if (typeof v.h === "number") contentH = v.h;
           } catch (err) {
-            console.warn("[browser-interface] innerWidth eval failed:", err);
+            console.warn("[browserface] innerWidth eval failed:", err);
           }
           this.chromeBarWidthDiff =
             osW > 0 && contentW > 0 ? Math.max(0, osW - contentW) : 0;
@@ -1513,7 +1513,7 @@ export class BrowserSession extends EventEmitter {
             },
           });
         } catch (err) {
-          console.warn("[browser-interface] setWindowBounds failed:", err);
+          console.warn("[browserface] setWindowBounds failed:", err);
         }
         return;
       }
@@ -1525,7 +1525,7 @@ export class BrowserSession extends EventEmitter {
           try {
             await this.send("Page.reload", { ignoreCache: false });
           } catch (err) {
-            console.warn("[browser-interface] reviveTab reload failed:", err);
+            console.warn("[browserface] reviveTab reload failed:", err);
           }
         }
         return;

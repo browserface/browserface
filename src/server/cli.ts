@@ -77,12 +77,12 @@ function parseArgs(argv: string[]): CliArgs {
 }
 
 function printHelp() {
-  console.log(`browser-interface — human UI for a CDP browser session
+  console.log(`browserface — human UI for a CDP browser session
 
 Usage:
-  browser-interface [options]
+  browserface [options]
 
-By default, browser-interface discovers your already-running Chrome by reading
+By default, browserface discovers your already-running Chrome by reading
 DevToolsActivePort from each known profile directory. If none is enabled yet,
 it opens chrome://inspect/#remote-debugging so you can tick the sticky toggle.
 
@@ -130,7 +130,7 @@ async function main() {
   const handle = await startBridge(opts);
 
   const shutdown = async (signal: string) => {
-    console.log(`\n[browser-interface] received ${signal}, shutting down`);
+    console.log(`\n[browserface] received ${signal}, shutting down`);
     await handle.close();
     process.exit(0);
   };
@@ -139,6 +139,6 @@ async function main() {
 }
 
 main().catch((err) => {
-  console.error("[browser-interface] failed to start:", err);
+  console.error("[browserface] failed to start:", err);
   process.exit(1);
 });

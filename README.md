@@ -1,8 +1,8 @@
-# Browser Interface
+# Browserface
 
 A lightweight human interface for live browser sessions over Chrome DevTools Protocol (CDP).
 
-Browser Interface gives humans the same primitives an agent uses — click, type,
+Browserface gives humans the same primitives an agent uses — click, type,
 scroll, navigate — over a Chromium session that may be running anywhere
 (local, VPS, ECS/Fargate). Instead of streaming a remote desktop or shipping a
 full browser UI, it provides a minimal, structured surface: periodic
@@ -35,11 +35,11 @@ npm run build
 
 ## Run
 
-By default Browser Interface attaches to your **already-running daily-driver
+By default Browserface attaches to your **already-running daily-driver
 Chrome**. Same trick browser-harness uses: Chrome has a per-profile sticky
 toggle at `chrome://inspect/#remote-debugging` that, once ticked, makes Chrome
 auto-enable CDP on every launch and write the dynamic port to
-`<profile>/DevToolsActivePort`. Browser Interface reads that file, probes the
+`<profile>/DevToolsActivePort`. Browserface reads that file, probes the
 port, and connects via the browser-level WebSocket — no `--remote-debugging-port`
 launch flag, no separate Chrome instance.
 
@@ -91,7 +91,7 @@ npm start -- --port 9222
 ### Finding Chrome targets
 
 `npm run find-chrome` reads Chrome's `DevToolsActivePort` file and prints
-ready-to-run commands for connecting Browser Interface to that Chrome. Run it
+ready-to-run commands for connecting Browserface to that Chrome. Run it
 on the machine where Chrome is running.
 
 For a local Chrome:
@@ -115,7 +115,7 @@ Watches the server and client; restarts the bridge on changes.
 ## Programmatic use
 
 ```ts
-import { startBridge } from "browser-interface";
+import { startBridge } from "browserface";
 
 const handle = await startBridge({
   host: "127.0.0.1",
@@ -130,7 +130,7 @@ The same `BrowserSession` class is exported for headless / agent use without
 the HTTP UI:
 
 ```ts
-import { BrowserSession } from "browser-interface";
+import { BrowserSession } from "browserface";
 
 const session = new BrowserSession({ host: "127.0.0.1", port: 9222 });
 await session.connect();

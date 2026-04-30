@@ -27,9 +27,9 @@ function buildOutput(endpoint) {
     profileDir: endpoint.profileDir,
     directTarget: remoteTarget,
     tunnelTarget,
-    directCommand: `npm start -- --target ${shellQuote(remoteTarget)}`,
+    directCommand: `browser/face --target ${shellQuote(remoteTarget)}`,
     sshTunnelCommand: `ssh -N -L ${localPort}:127.0.0.1:${remotePort} ${shellQuote(connectHost)}`,
-    tunnelCommand: `npm start -- --target ${shellQuote(tunnelTarget)}`,
+    tunnelCommand: `browser/face --target ${shellQuote(tunnelTarget)}`,
   };
 }
 

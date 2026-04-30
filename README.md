@@ -26,14 +26,11 @@ Bridge (HTTP + WebSocket)
 Client UI (any browser) — and/or agents
 ```
 
-## Install
+## Run
 
 ```sh
-npm install
-npm run build
+browser/face
 ```
-
-## Run
 
 By default browserface attaches to your **already-running daily-driver
 Chrome**. Same trick browser-harness uses: Chrome has a per-profile sticky
@@ -42,10 +39,6 @@ auto-enable CDP on every launch and write the dynamic port to
 `<profile>/DevToolsActivePort`. browserface reads that file, probes the
 port, and connects via the browser-level WebSocket — no `--remote-debugging-port`
 launch flag, no separate Chrome instance.
-
-```sh
-npm start
-```
 
 The first run opens `chrome://inspect/#remote-debugging` for you (via
 AppleScript on macOS). Tick the checkbox, click `Allow`, and the bridge attaches
@@ -57,19 +50,19 @@ Then open <http://127.0.0.1:8787>.
 
 ```sh
 # Skip discovery and connect to a specific CDP port (e.g. headless container):
-npm start -- --host 127.0.0.1 --port 9222
+browser/face --host 127.0.0.1 --port 9222
 
 # Or a specific WS URL (page-level or browser-level):
-npm start -- --target ws://127.0.0.1:9222/devtools/browser/<id>
+browser/face --target ws://127.0.0.1:9222/devtools/browser/<id>
 
 # Print connection commands for an already-running Chrome:
-npm run find-chrome
+browser/find
 
 # Headless Chrome for testing:
 "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" \
   --remote-debugging-port=9222 --headless=new --no-first-run \
   --user-data-dir=/tmp/cdp-profile about:blank &
-npm start -- --port 9222
+browser/face --port 9222
 ```
 
 ### CLI flags
@@ -90,36 +83,33 @@ npm start -- --port 9222
 
 ### Finding Chrome targets
 
-`npm run find-chrome` reads Chrome's `DevToolsActivePort` file and prints
+`browser/find` reads Chrome's `DevToolsActivePort` file and prints
 ready-to-run commands for connecting browserface to that Chrome. Run it
 on the machine where Chrome is running.
 
 For a local Chrome:
 
 ```sh
-npm run find-chrome
+browser/find
 ```
 
 For a Chrome running on another machine, run the same command on that machine.
-The output includes a direct `npm start -- --target ...` command and an SSH
+The output includes a direct `browser/face --target ...` command and an SSH
 tunnel workflow using `ssh -N -L`.
 
-### Behind ngrok
+### Sharing
 
 ```sh
-npm start                                                # binds 127.0.0.1:8787
-ngrok http 8787 --oauth google --oauth-allow-email you@example.com
+browser/share --oauth google --oauth-allow-email you@example.com
 ```
 
-HTTP tunnel only — `/ws` needs the upgrade. CDP stays bound to localhost;
-only the bridge port is exposed. The bridge has no auth of its own, so
-always front it with `--oauth`, `--basic-auth`, or `--cidr-allow` —
-whoever loads the URL drives your browser.
+`browser/share` exposes the bridge over a public URL. See the script's
+header for available auth flags and the security caveat.
 
 ## Develop
 
 ```sh
-npm run dev -- --host 127.0.0.1 --port 9222
+browser/face dev --host 127.0.0.1 --port 9222
 ```
 
 Watches the server and client; restarts the bridge on changes.

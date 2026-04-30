@@ -1,0 +1,102 @@
+#!/usr/bin/env bash
+# Wrapper around ngrok that defaults to forwarding the bridge port (8787).
+# Install ngrok from https://ngrok.com/download if it isn't already.
+# Pass any extra ngrok flags through, e.g.:
+#
+#   browser/share --oauth google --oauth-allow-email you@example.com
+#
+# HTTP tunnel only — /ws needs the upgrade. CDP stays bound to localhost;
+# only the bridge port is exposed. The bridge has no auth of its own, so
+# you must front it with one of --oauth, --oidc, --cidr-allow,
+# --mutual-tls-cas, or --traffic-policy-file. (Note: ngrok's --basic-auth
+# does not work well with browserface — the WebSocket reconnect retriggers
+# the prompt repeatedly — so it's not accepted here.) To run without auth,
+# pass --auth-disabled explicitly. Whoever loads the URL drives your
+# browser.
+set -euo pipefail
+
+usage() {
+  cat <<'EOF'
+browser/share — expose the local bridge over a public ngrok URL
+
+Usage:
+  browser/share [domain] [ngrok flags...]
+
+Optional:
+  domain                        reuse a stable ngrok URL, e.g. you.ngrok.app
+                                (omit to let ngrok assign a fresh URL)
+
+Auth (one is required):
+  --oauth <provider>            e.g. google, github, microsoft
+    --oauth-allow-email <addr>  repeat for multiple addresses
+    --oauth-allow-domain <dom>  allow a whole email domain
+  --oidc <issuer-url>           OIDC provider, with --oidc-client-id / --oidc-client-secret
+  --cidr-allow <range>          allow only these IP ranges
+  --mutual-tls-cas <path>       require client certs signed by these CAs
+  --traffic-policy-file <path>  arbitrary policy YAML
+  --auth-disabled               run without auth (anyone with the URL drives your browser)
+
+Common examples:
+  browser/share --oauth google --oauth-allow-email you@example.com
+  browser/share you.ngrok.app --oauth google --oauth-allow-email you@example.com
+  browser/share --cidr-allow 203.0.113.0/24
+
+Install ngrok from https://ngrok.com/download if it isn't already.
+EOF
+}
+
+if [[ $# -eq 0 ]]; then
+  usage
+  exit 0
+fi
+
+if ! command -v ngrok >/dev/null 2>&1; then
+  echo "ngrok not found. Install it from https://ngrok.com/download" >&2
+  exit 1
+fi
+
+# Optional first positional = ngrok domain. Bare hostnames get https://
+# prepended; full URLs pass through as-is.
+domain=""
+if [[ "${1:0:1}" != "-" ]]; then
+  domain="$1"; shift
+  if [[ "$domain" != http://* && "$domain" != https://* ]]; then
+    domain="https://$domain"
+  fi
+fi
+
+# Strip our own --auth-disabled flag before forwarding to ngrok.
+auth_disabled=0
+ngrok_args=()
+for arg in "$@"; do
+  if [[ "$arg" == "--auth-disabled" ]]; then
+    auth_disabled=1
+  else
+    ngrok_args+=("$arg")
+  fi
+done
+
+# ngrok has no single "require auth" switch; these are the flags that
+# gate access. --basic-auth is intentionally excluded (see header).
+has_auth=0
+for arg in "${ngrok_args[@]+"${ngrok_args[@]}"}"; do
+  case "$arg" in
+    --oauth|--oauth=*|--oidc|--oidc=*|--cidr-allow|--cidr-allow=*|\
+    --mutual-tls-cas|--mutual-tls-cas=*|\
+    --traffic-policy-file|--traffic-policy-file=*)
+      has_auth=1; break
+      ;;
+  esac
+done
+
+if [[ $has_auth -eq 0 && $auth_disabled -eq 0 ]]; then
+  echo "ERROR: no auth flag detected. Anyone with the URL can drive your browser." >&2
+  echo "  Add --oauth, --oidc, --cidr-allow, --mutual-tls-cas, or --traffic-policy-file." >&2
+  echo "  Or pass --auth-disabled to run without auth." >&2
+  exit 1
+fi
+
+if [[ -n "$domain" ]]; then
+  exec ngrok http 8787 --url "$domain" "${ngrok_args[@]+"${ngrok_args[@]}"}"
+fi
+exec ngrok http 8787 "${ngrok_args[@]+"${ngrok_args[@]}"}"

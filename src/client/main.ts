@@ -59,8 +59,8 @@ let activeTabId: string | null = null;
 let urlRequestedTabId: string | null = parseTabFromHash();
 
 function parseTabFromHash(): string | null {
-  const m = window.location.hash.match(/(?:^|[#&])tab=([^&]+)/);
-  return m && m[1] ? decodeURIComponent(m[1]) : null;
+  const raw = window.location.hash.replace(/^#/, "");
+  return raw ? decodeURIComponent(raw) : null;
 }
 
 function updateHashForActiveTab(tabId: string | null): void {
@@ -69,7 +69,7 @@ function updateHashForActiveTab(tabId: string | null): void {
   // into a request log) and so navigation/refresh in the bridge UI
   // stays a no-op for everyone else. replaceState avoids cluttering
   // the back/forward stack on every tab switch.
-  const next = tabId ? `tab=${encodeURIComponent(tabId)}` : "";
+  const next = tabId ? encodeURIComponent(tabId) : "";
   const current = window.location.hash.replace(/^#/, "");
   if (current === next) return;
   const url =

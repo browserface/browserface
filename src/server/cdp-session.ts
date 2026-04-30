@@ -854,7 +854,7 @@ export class BrowserSession extends EventEmitter {
               const x = ${x}, y = ${y};
               const stack = document.elementsFromPoint(x, y);
               const top = stack[0];
-              if (!top) return { href: null, cursor: 'default', editable: false, topTag: null, stackTags: [] };
+              if (!top) return { href: null, cursor: 'default', editable: false };
               const TEXT_INPUT_TYPES = ['text','search','email','url','tel','password','number'];
               function isEditableEl(e) {
                 if (!e) return false;
@@ -930,54 +930,20 @@ export class BrowserSession extends EventEmitter {
                 }
               }
               const a = top.closest('a');
-              // Diagnostic-only: the topmost element's tag (with id /
-              // first className for context) and the chain of tags in
-              // the geometric hit stack. Helps debug "why doesn't this
-              // input register as editable" by showing which DOM the
-              // probe is actually hitting.
-              function describe(e) {
-                if (!e) return 'null';
-                const tag = e.tagName;
-                const id = e.id ? '#' + e.id : '';
-                const cls = (e.className && typeof e.className === 'string')
-                  ? '.' + e.className.split(/\\s+/).filter(Boolean).slice(0, 2).join('.')
-                  : '';
-                const type = e.tagName === 'INPUT' ? '[type=' + (e.getAttribute('type') || 'text') + ']' : '';
-                return tag + type + id + cls;
-              }
-              const topTag = describe(top);
-              const stackTags = stack.slice(0, 5).map(describe);
-              return { href: (a && a.href) || null, cursor, editable, topTag, stackTags };
+              return { href: (a && a.href) || null, cursor, editable };
             })()`,
             returnByValue: true,
           },
         ),
         500,
       )) as {
-        result?: {
-          value?: {
-            href: string | null;
-            cursor: string;
-            editable?: boolean;
-            topTag?: string | null;
-            stackTags?: string[];
-          };
-        };
+        result?: { value?: { href: string | null; cursor: string; editable?: boolean } };
       } | null;
       const v = evalRes?.result?.value;
       if (!v) return;
       const href = v.href;
       const cursor = v.cursor || "default";
       const editable = !!v.editable;
-      console.log("[probe]", {
-        x: Math.round(x),
-        y: Math.round(y),
-        cursor,
-        editable,
-        topTag: v.topTag ?? null,
-        stackTags: v.stackTags ?? [],
-        href,
-      });
       if (
         href !== this.lastHoveredHref ||
         cursor !== this.lastCursor ||

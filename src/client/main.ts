@@ -6,6 +6,7 @@ import { setupResize } from "./resize.js";
 import { setupStatusBar } from "./statusbar.js";
 import { setupTabs } from "./tabs.js";
 import { setupToolbar } from "./toolbar.js";
+import { setupTouch } from "./touch.js";
 
 interface Viewport {
   width: number;
@@ -256,8 +257,14 @@ type Orient = "horizontal" | "vertical";
 function applyOrient(o: Orient) {
   document.body.classList.toggle("orient-vertical", o === "vertical");
 }
+// Coarse pointer = phone / tablet / kiosk. The vertical sidebar mode is
+// unusable below ~700px and the orient toggle is hidden by mobile CSS, so
+// force horizontal regardless of the persisted preference. Desktop users
+// keep their stored choice.
+const isCoarsePointer =
+  typeof window.matchMedia === "function" && window.matchMedia("(pointer: coarse)").matches;
 const storedOrient = localStorage.getItem(ORIENT_KEY);
-applyOrient(storedOrient === "vertical" ? "vertical" : "horizontal");
+applyOrient(!isCoarsePointer && storedOrient === "vertical" ? "vertical" : "horizontal");
 
 function applySidebarWidth(px: number) {
   const clamped = Math.max(SIDEBAR_MIN, Math.min(SIDEBAR_MAX, Math.round(px)));
@@ -491,4 +498,19 @@ mouseTarget.addEventListener(
   },
   { passive: false },
 );
+
+// ── Touch (coarse pointer) ───────────────────────────────────────────────────
+//
+// Set up regardless of pointer kind so a desktop with a touchscreen still
+// works; nothing here fires unless the user actually touches.
+setupTouch({
+  frame: els.frame,
+  send: bridge.send,
+  pointToViewport,
+  getRemoteToLocalScale: () => {
+    const local = els.frame.clientWidth;
+    return local > 0 ? viewport.width / local : 1;
+  },
+  focusPasteHelper: () => pasteHelper.focus(),
+});
 

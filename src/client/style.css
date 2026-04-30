@@ -868,3 +868,57 @@ body.resizing {
 .resize-readout[hidden] {
   display: none;
 }
+
+/* ── Coarse pointer (phone, tablet, touchscreen kiosk) ──────────────────────
+   First-pass mobile adjustments. Hides desktop-only chrome that depends on
+   precise pointing or doesn't fit, enlarges tap targets, and hands single-
+   finger gestures to the JS touch handler while leaving pinch-zoom to the
+   browser. The orient toggle is hidden here too — main.ts also forces
+   horizontal mode at startup, so the vertical sidebar layout never loads
+   on mobile. */
+@media (pointer: coarse) {
+  .orient-toggle,
+  .sidebar-resize,
+  .resize-handle,
+  .cdp-endpoint,
+  .fps,
+  .hover-link,
+  #open-external {
+    display: none !important;
+  }
+
+  /* Tap-friendly nav buttons (Apple HIG suggests ≥44px; we get most of the
+     way there without ballooning the toolbar). */
+  .nav {
+    width: 36px;
+    height: 36px;
+  }
+
+  .tab {
+    padding: 8px 8px 8px 12px;
+  }
+
+  .tab .close {
+    padding: 4px 6px;
+    min-width: 22px;
+  }
+
+  /* Single-finger pan/scroll is claimed by the touch handler; pinch-zoom on
+     the bridge UI itself stays available. Without this, browsers would
+     intercept single-finger drags as native scrolls and our handler would
+     never see them. */
+  .frame {
+    touch-action: pinch-zoom;
+  }
+
+  /* iOS / Android refuse to pop the OS keyboard for inputs that are clipped
+     to a 0×0 rect. Drop the clip on coarse pointers and rely on the 1×1
+     size + z-index:-1 to keep the helper visually invisible. The helper
+     is still focused via tap-on-frame inside the touch gesture, so the
+     keyboard surfaces from a real user action (browsers reject keyboard
+     pop from non-gesture focus calls). */
+  .paste-helper {
+    clip: auto;
+    opacity: 0;
+  }
+}

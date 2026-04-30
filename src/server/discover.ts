@@ -182,7 +182,7 @@ export async function discoverChrome(opts: DiscoverOptions = {}): Promise<DevToo
   //    Both cases mean the per-profile sticky toggle isn't currently in effect.
   if (autoOpen) {
     log(
-      "[browser-interface] enabling Chrome remote-debugging — opening chrome://inspect/#remote-debugging.\n" +
+      "[browserface] enabling Chrome remote-debugging — opening chrome://inspect/#remote-debugging.\n" +
         "  In the tab that opens: tick 'Discover network targets' and click 'Allow' if prompted.\n" +
         "  (This setting sticks per-profile, so subsequent runs won't need it.)",
     );
@@ -204,7 +204,7 @@ export async function discoverChrome(opts: DiscoverOptions = {}): Promise<DevToo
     }
     const now = Date.now();
     if (now - lastLogged > 5_000) {
-      log("[browser-interface] waiting for remote-debugging port to come up…");
+      log("[browserface] waiting for remote-debugging port to come up…");
       lastLogged = now;
     }
     await new Promise((r) => setTimeout(r, 1_000));

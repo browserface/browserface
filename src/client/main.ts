@@ -95,7 +95,7 @@ function handleServerMessage(msg: ServerMessage) {
     case "ready":
       viewport = msg.viewport;
       toolbar.setUrl(msg.url);
-      document.title = msg.title ? `${msg.title} — Browserface` : "Browserface";
+      document.title = msg.title ? `${msg.title} — browserface` : "browserface";
       statusBar.setCdpEndpoint(msg.cdpEndpoint ?? "");
       fitFrame();
       return;
@@ -116,7 +116,7 @@ function handleServerMessage(msg: ServerMessage) {
     }
     case "page":
       toolbar.setUrl(msg.url);
-      document.title = msg.title ? `${msg.title} — Browserface` : "Browserface";
+      document.title = msg.title ? `${msg.title} — browserface` : "browserface";
       statusBar.setLoading(msg.loading);
       return;
     case "tabs": {

@@ -47,6 +47,14 @@ export interface TouchOptions {
 }
 
 const TAP_THRESHOLD_PX = 10;
+// Double-tap window. Mirrors the iOS native double-tap gesture timing
+// loosely (~300ms typical), padded for finger imprecision. A second tap
+// within this window and within DOUBLE_TAP_PX of the first is treated as
+// a deterministic "force-focus the paste helper" gesture, so users have
+// a reliable way to pop the OS keyboard when the probe round-trip
+// loses the race against the user's lift on a single tap.
+const DOUBLE_TAP_MS = 350;
+const DOUBLE_TAP_PX = 40;
 
 export function setupTouch(opts: TouchOptions): void {
   const {
@@ -64,6 +72,12 @@ export function setupTouch(opts: TouchOptions): void {
   let lastX = 0;
   let lastY = 0;
   let scrolling = false;
+  // Last completed tap: time and start coords. Used to detect a
+  // double-tap so the second tap can force-focus the helper inside the
+  // gesture, popping the OS keyboard deterministically.
+  let lastTapAt = 0;
+  let lastTapX = 0;
+  let lastTapY = 0;
 
   function findChanged(touches: TouchList, id: number): Touch | null {
     for (let i = 0; i < touches.length; i++) {
@@ -162,17 +176,37 @@ export function setupTouch(opts: TouchOptions): void {
       // inside a user gesture; a focus from a WebSocket onmessage
       // callback ~100ms later is silently rejected for keyboard
       // purposes. The `predictedEditable` boolean is set from the
-      // touchstart-dispatched hover probe.
+      // touchstart-dispatched hover probe — and falls back to a
+      // double-tap force-focus when the probe round-trip lost the race.
       const { x, y } = pointToViewport({ clientX: startX, clientY: startY });
       send({ type: "mousedown", x, y, button: "left", clickCount: 1 });
       send({ type: "mouseup", x, y, button: "left", clickCount: 1 });
-      const editable = getLastCursorEditable();
-      console.log("[probe] touchend-decision", {
-        x: Math.round(x),
-        y: Math.round(y),
-        predictedEditable: editable,
-      });
-      focusPasteHelperOnTap(editable);
+      const now = performance.now();
+      const dx = startX - lastTapX;
+      const dy = startY - lastTapY;
+      const isDoubleTap =
+        now - lastTapAt < DOUBLE_TAP_MS && dx * dx + dy * dy < DOUBLE_TAP_PX * DOUBLE_TAP_PX;
+      if (isDoubleTap) {
+        console.log("[probe] touchend-double-tap-force-focus", {
+          x: Math.round(x),
+          y: Math.round(y),
+        });
+        focusPasteHelperOnTap(true);
+        // Reset so a third tap doesn't immediately re-fire as another
+        // double-tap from this same lastTapAt anchor.
+        lastTapAt = 0;
+      } else {
+        const editable = getLastCursorEditable();
+        console.log("[probe] touchend-decision", {
+          x: Math.round(x),
+          y: Math.round(y),
+          predictedEditable: editable,
+        });
+        focusPasteHelperOnTap(editable);
+        lastTapAt = now;
+        lastTapX = startX;
+        lastTapY = startY;
+      }
     }
     scrolling = false;
   });

@@ -65,26 +65,9 @@ case "$cmd" in
     ensure_agent_chrome_if_default "$@"
     exec node scripts/dev.mjs "$@"
     ;;
-  build)
+  build|build:server|build:client|typecheck|clean)
     [[ -d node_modules ]] || npm install
-    "$TSC" -p tsconfig.server.json
-    node scripts/build-client.mjs
-    ;;
-  build:server)
-    [[ -d node_modules ]] || npm install
-    exec "$TSC" -p tsconfig.server.json
-    ;;
-  build:client)
-    [[ -d node_modules ]] || npm install
-    exec node scripts/build-client.mjs
-    ;;
-  typecheck)
-    [[ -d node_modules ]] || npm install
-    "$TSC" -p tsconfig.server.json --noEmit
-    "$TSC" -p tsconfig.client.json --noEmit
-    ;;
-  clean)
-    rm -rf dist
+    exec npm run "$cmd" -- "$@"
     ;;
   -h|--help|help)
     sed -n '2,14p' "$0" | sed 's/^# \{0,1\}//'

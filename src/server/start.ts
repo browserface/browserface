@@ -1,8 +1,6 @@
-// browser/start — launch a dedicated agent Chrome (or attach to one that's
-// already running). Real logic for the bash wrapper at browser/start; the
-// wrapper handles --help and the build/install dance.
+// browser/start — launch a dedicated agent Chrome, or attach to one that
+// is already running.
 //
-// The functional shape mirrors what the wrapper used to do in shell:
 //   1. Try to attach: read DevToolsActivePort and probe the port.
 //   2. If alive but no tabs (macOS keeps Chrome.app running with no
 //      windows), open a chrome://newtab/ tab so a window comes back.
@@ -113,8 +111,6 @@ function playwrightBinaryIn(root: string): string | null {
 
 function findChromeBinary(override: string | undefined): string {
   if (override) {
-    // Match the bash version's `[[ -x ]]` check — accessSync(X_OK) is the
-    // node equivalent and respects the effective UID's permissions.
     try {
       accessSync(override, constants.X_OK);
     } catch {

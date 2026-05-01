@@ -114,7 +114,7 @@ To skip repeating auth flags on every invocation, save them once with
 `browser/config`:
 
 ```sh
-browser/config auth set --oauth google --oauth-allow-email you@example.com
+browser/config set auth --oauth google --oauth-allow-email you@example.com
 browser/share you.ngrok.app
 ```
 
@@ -123,11 +123,12 @@ reads that file whenever no auth flag is on the CLI. Any auth flag (or
 `--auth-disabled`) on the CLI suppresses the file fallback for that
 invocation, so per-task overrides still work.
 
-Other `browser/config` subcommands:
+Other commands:
 
 ```sh
-browser/config auth show    # print the saved value (or "(unset)")
-browser/config auth clear   # remove ~/.browserface/auth
+browser/config show         # print all settings
+browser/config show auth    # print one
+browser/config clear auth   # remove ~/.browserface/auth
 ```
 
 ## Develop

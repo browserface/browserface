@@ -16,7 +16,7 @@
 #
 # To set a default auth policy that every invocation inherits, run:
 #
-#   browser/config auth set --oauth google --oauth-allow-email you@example.com
+#   browser/config set auth --oauth google --oauth-allow-email you@example.com
 #
 # That writes the flags to ~/.browserface/auth, which browser/share reads
 # whenever no auth-related flag is on the CLI. Any auth flag (or
@@ -46,7 +46,7 @@ Auth (one is required):
   --auth-disabled               run without auth (anyone with the URL drives your browser)
 
 Default auth (persistent):
-  browser/config auth set <flags>   save flags to ~/.browserface/auth; applied when
+  browser/config set auth <flags>   save flags to ~/.browserface/auth; applied when
                                     no auth flag is on the CLI
 
 Common examples:
@@ -134,7 +134,7 @@ if [[ $has_auth -eq 0 && $auth_disabled -eq 0 ]]; then
   echo "ERROR: no auth flag detected. Anyone with the URL can drive your browser." >&2
   echo "  Add --oauth, --oidc, --cidr-allow, --mutual-tls-cas, or --traffic-policy-file." >&2
   echo "  Or pass --auth-disabled to run without auth." >&2
-  echo "  Or run: browser/config auth set --oauth google --oauth-allow-email …  (saves as default)" >&2
+  echo "  Or run: browser/config set auth --oauth google --oauth-allow-email …  (saves as default)" >&2
   exit 1
 fi
 

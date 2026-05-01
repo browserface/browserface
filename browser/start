@@ -127,10 +127,33 @@ ws_url_from_profile() {
   echo "ws://127.0.0.1:${port}${path}"
 }
 
+# True if Chrome at port $1 has at least one page-type target. macOS keeps
+# Chrome.app alive after the last window is closed, so the CDP port stays
+# bound but /json reports zero page targets — visually nothing's there.
+has_page_target() {
+  local port="$1" body
+  body=$(curl -s --max-time 2 "http://127.0.0.1:${port}/json") || return 1
+  # Chrome pretty-prints with spaces; tolerate either spacing.
+  printf '%s' "$body" | grep -qE '"type"[[:space:]]*:[[:space:]]*"page"'
+}
+
+# Open a fresh about:blank tab on the running Chrome at port $1, which
+# brings up a window if none exist.
+open_blank_tab() {
+  local port="$1"
+  curl -s --max-time 2 -X PUT "http://127.0.0.1:${port}/json/new" >/dev/null
+}
+
 # ── main ──────────────────────────────────────────────────────────────────
 
-# Already running?
+# Already running? If so, make sure there's a visible window — Chrome may
+# be alive with zero tabs after the user closed every window.
 if url=$(ws_url_from_profile); then
+  port=$(head -1 "$profile_dir/DevToolsActivePort")
+  if ! has_page_target "$port"; then
+    echo "browser/start: agent Chrome is alive but has no open windows; opening one." >&2
+    open_blank_tab "$port" || echo "browser/start: warning: PUT /json/new failed" >&2
+  fi
   echo "$url"
   exit 0
 fi

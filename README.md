@@ -199,6 +199,12 @@ const handle = await startBridge({
 await handle.close();
 ```
 
+`startBridge({})` (no options) attaches to the agent profile at
+`~/.browserface/chrome` and throws if it isn't running — bring it up with
+the `browser/start` script first, or pass `discoverDailyDriver: true` to
+fall back to the chrome://inspect-toggle flow against the daily-driver
+Chrome.
+
 The same `BrowserSession` class is exported for headless / agent use without
 the HTTP UI:
 

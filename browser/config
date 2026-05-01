@@ -125,7 +125,6 @@ merge_auth() {
 bridge_canonical_flag() {
   local f="${1%%=*}"
   case "$f" in
-    -l) echo "--listen-port" ;;
     --listen-host|--listen-port|--width|--height|--max-fps|--format|--quality)
       echo "$f" ;;
     *) echo "" ;;
@@ -146,7 +145,7 @@ domain_set_bridge() {
     c="$(bridge_canonical_flag "$arg")"
     if [[ -z "$c" ]]; then
       echo "browser/config set bridge: unknown flag '$arg'" >&2
-      echo "  Valid: --listen-host, --listen-port (-l), --width, --height, --max-fps, --format, --quality" >&2
+      echo "  Valid: --listen-host, --listen-port, --width, --height, --max-fps, --format, --quality" >&2
       exit 1
     fi
     if [[ "$arg" == *=* ]]; then

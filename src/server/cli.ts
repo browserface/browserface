@@ -12,7 +12,7 @@ interface CliArgs {
   maxFps?: number;
   format?: "png" | "jpeg";
   quality?: number;
-  noAutoDiscover?: boolean;
+  discover?: boolean;
 }
 
 function parseArgs(argv: string[]): CliArgs {
@@ -29,7 +29,6 @@ function parseArgs(argv: string[]): CliArgs {
     const next = () => inlineValue ?? argv[++i];
     switch (name) {
       case "--target":
-      case "-t":
         out.target = next();
         break;
       case "--host":
@@ -42,7 +41,6 @@ function parseArgs(argv: string[]): CliArgs {
         out.listenHost = next();
         break;
       case "--listen-port":
-      case "-l":
         out.listenPort = Number(next());
         break;
       case "--width":
@@ -62,8 +60,8 @@ function parseArgs(argv: string[]): CliArgs {
       case "--quality":
         out.quality = Number(next());
         break;
-      case "--no-auto-discover":
-        out.noAutoDiscover = true;
+      case "--discover":
+        out.discover = true;
         break;
       case "--help":
       case "-h":
@@ -84,19 +82,23 @@ function printHelp() {
 Usage:
   browserface [options]
 
-By default, browserface discovers your already-running Chrome by reading
-DevToolsActivePort from each known profile directory. If none is enabled yet,
-it opens chrome://inspect/#remote-debugging so you can tick the sticky toggle.
+By default, browserface attaches to its dedicated agent Chrome profile
+(~/.browserface/chrome). The browser/face wrapper auto-runs browser/start
+to bring it up; running this binary directly errors if it's not already
+live. Pass --discover to attach to your own Chrome instead via the
+chrome://inspect-toggle flow.
 
-CDP target (skips auto-discovery):
-  --target, -t <url>       Full CDP WebSocket URL (browser- or page-level)
+Connect to a specific CDP target:
+  --target <url>           Full CDP WebSocket URL (browser- or page-level)
   --host <host>            CDP host (default 127.0.0.1)
-  --port <port>            CDP port (no default — set this to skip discovery)
-  --no-auto-discover       Fail instead of running auto-discovery
+  --port <port>            CDP port
+
+Discover your own Chrome instead of the agent profile:
+  --discover               Attach via the chrome://inspect toggle flow
 
 Server:
   --listen-host <host>     HTTP/WS bind host (default 127.0.0.1)
-  --listen-port, -l <port> HTTP/WS bind port (default 8768)
+  --listen-port <port>     HTTP/WS bind port (default 8768)
 
 Viewport / capture:
   --width <px>             Override viewport width (Emulation.setDeviceMetricsOverride)
@@ -125,7 +127,7 @@ async function main() {
   if (args.width && args.height) {
     opts.viewport = { width: args.width, height: args.height };
   }
-  if (args.noAutoDiscover) opts.autoDiscover = false;
+  if (args.discover) opts.discoverUserChrome = true;
 
   const handle = await startBridge(opts);
 

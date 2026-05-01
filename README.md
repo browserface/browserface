@@ -36,30 +36,48 @@ cd browserface
 browser/face
 ```
 
-By default browserface attaches to your **already-running daily-driver
-Chrome**. Same trick browser-harness uses: Chrome has a per-profile sticky
-toggle at `chrome://inspect/#remote-debugging` that, once ticked, makes Chrome
-auto-enable CDP on every launch and write the dynamic port to
-`<profile>/DevToolsActivePort`. browserface reads that file, probes the
-port, and connects via the browser-level WebSocket — no `--remote-debugging-port`
-launch flag, no separate Chrome instance.
-
-The first run opens `chrome://inspect/#remote-debugging` for you (via
-AppleScript on macOS). Tick the checkbox, click `Allow`, and the bridge attaches
-within a few seconds. Future runs skip the prompt — the toggle is sticky.
+By default browserface starts and attaches to its **own dedicated Chrome
+profile** at `~/.browserface/chrome`, separate from your own Chrome. The
+`browser/face` wrapper auto-runs `browser/start` to bring it up — no
+setup, no popups, no overlap with your everyday browsing. The profile
+persists, so once you sign into Gmail / Slack / etc. in it, those
+sessions stick around for the next run.
 
 Then open <http://127.0.0.1:8768>.
+
+Why a dedicated profile by default: Chrome only suppresses the per-connect
+"Allow remote debugging" popup when the debug port was opened at launch
+via `--remote-debugging-port`. Attaching to your own Chrome via the
+`chrome://inspect`-toggle path triggers that popup on every connect —
+fine for the human ad-hoc use case, painful for autonomous agents. The
+agent-profile default sidesteps it entirely. As a bonus, the agent's
+blast radius is scoped to one profile, so bank tabs / work email / etc.
+in your own Chrome are simply not reachable.
+
+### Attach to your own Chrome instead
+
+Pass `--discover` to use the original `chrome://inspect`-toggle flow
+against your existing Chrome:
+
+```sh
+browser/face --discover
+```
+
+The first run opens `chrome://inspect/#remote-debugging` for you (via
+AppleScript on macOS). Tick the checkbox, click `Allow`, and the bridge
+attaches within a few seconds. Future runs skip the prompt — the toggle
+is sticky.
 
 ### Other connection modes
 
 ```sh
-# Skip discovery and connect to a specific CDP port (e.g. headless container):
+# Specific CDP port (e.g. headless container):
 browser/face --host 127.0.0.1 --port 9222
 
-# Or a specific WS URL (page-level or browser-level):
+# Specific WS URL (page-level or browser-level):
 browser/face --target ws://127.0.0.1:9222/devtools/browser/<id>
 
-# Print connection commands for an already-running Chrome:
+# Print connection commands for a Chrome on this or another machine:
 browser/find
 
 # Headless Chrome for testing:
@@ -69,17 +87,34 @@ browser/find
 browser/face --port 9222
 ```
 
+### The agent profile in detail
+
+`browser/start` is the launcher behind the default mode. Idempotent — run
+it directly to bring up the agent Chrome without starting the bridge:
+
+```sh
+browser/start    # launches Chrome with --user-data-dir=~/.browserface/chrome --remote-debugging-port=...
+                 # prints the CDP WebSocket URL on stdout
+```
+
+Binary lookup, in order: `--chromium-binary <path>` → system Chrome
+(`/Applications/Google Chrome.app` on macOS, `google-chrome`/`chromium`
+on Linux) → `$PLAYWRIGHT_BROWSERS_PATH` if set → default Playwright cache
+(`~/Library/Caches/ms-playwright` on macOS, `~/.cache/ms-playwright` on
+Linux). Run `npx playwright install chromium` if neither system Chrome
+nor a Playwright cache is present.
+
 ### CLI flags
 
 | Flag | Description |
 | --- | --- |
-| _(none)_ | Auto-discover via `DevToolsActivePort` (default) |
-| `--target, -t <url>` | Full CDP WebSocket URL (browser- or page-level) |
+| _(none)_ | Attach to the agent profile (default; `browser/face` wrapper auto-runs `browser/start`) |
+| `--discover` | Attach to your own Chrome via the `chrome://inspect`-toggle flow instead |
+| `--target <url>` | Full CDP WebSocket URL (browser- or page-level) |
 | `--host <host>` | CDP host (default `127.0.0.1`) |
-| `--port <port>` | CDP port — set this to skip auto-discovery |
-| `--no-auto-discover` | Disable discovery; require `--target` or `--port` |
+| `--port <port>` | CDP port |
 | `--listen-host <host>` | UI bind host (default `127.0.0.1`) |
-| `--listen-port, -l <port>` | UI bind port (default `8768`) |
+| `--listen-port <port>` | UI bind port (default `8768`) |
 | `--width <px>` `--height <px>` | Override viewport via `Emulation.setDeviceMetricsOverride` |
 | `--max-fps <n>` | Cap emitted frames per second (default `30`; `0` disables) |
 | `--format <png\|jpeg>` | Screenshot format (default `jpeg`) |
@@ -162,6 +197,11 @@ const handle = await startBridge({
 // later:
 await handle.close();
 ```
+
+`startBridge({})` (no options) attaches to the agent profile at
+`~/.browserface/chrome` and throws if it isn't running — bring it up with
+the `browser/start` script first, or pass `discoverUserChrome: true` to
+fall back to the chrome://inspect-toggle flow against your own Chrome.
 
 The same `BrowserSession` class is exported for headless / agent use without
 the HTTP UI:

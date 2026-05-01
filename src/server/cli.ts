@@ -87,14 +87,14 @@ Usage:
 By default, browserface attaches to its dedicated agent Chrome profile
 (~/.browserface/chrome). The browser/face wrapper auto-runs browser/start
 to bring it up; running this binary directly errors if it's not already
-live. Pass --discover to attach to your daily-driver Chrome instead via
-the chrome://inspect-toggle flow.
+live. Pass --discover to attach to your own Chrome instead via the
+chrome://inspect-toggle flow.
 
 CDP target (skips auto-discovery):
   --target, -t <url>       Full CDP WebSocket URL (browser- or page-level)
   --host <host>            CDP host (default 127.0.0.1)
   --port <port>            CDP port (no default — set this to skip discovery)
-  --discover               Attach to the daily-driver Chrome via chrome://inspect
+  --discover               Attach to your own Chrome via the chrome://inspect
                            toggle (default: agent profile only)
 
 Server:
@@ -128,7 +128,7 @@ async function main() {
   if (args.width && args.height) {
     opts.viewport = { width: args.width, height: args.height };
   }
-  if (args.discover) opts.discoverDailyDriver = true;
+  if (args.discover) opts.discoverUserChrome = true;
 
   const handle = await startBridge(opts);
 

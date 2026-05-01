@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # browser/start — launch a dedicated Chrome with remote debugging enabled,
-# using its own profile so the daily-driver Chrome is untouched. Idempotent:
+# using its own profile so the user's own Chrome is untouched. Idempotent:
 # if the profile is already running, just prints its CDP WebSocket URL.
 #
 # Why a dedicated profile: Chrome only suppresses the per-connect "Allow

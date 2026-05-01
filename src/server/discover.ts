@@ -10,11 +10,11 @@ import { homedir, platform } from "node:os";
 import { join } from "node:path";
 import { spawn } from "node:child_process";
 
-// Profile directories the daily-driver Chrome / Edge / Brave / Chromium write
+// Profile directories the user's Chrome / Edge / Brave / Chromium write
 // into. First-match wins. The agent profile (~/.browserface/chrome) is NOT in
 // this list — discovery against it is intentionally a separate code path
-// (findAgentProfile / discoverAgentChrome) so a stopped agent Chrome can never
-// silently fall through to attaching the daily-driver.
+// (findAgentProfile) so a stopped agent Chrome can never silently fall
+// through to attaching the user's own Chrome.
 function profileDirs(): string[] {
   const home = homedir();
   return [

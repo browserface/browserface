@@ -16,10 +16,10 @@ export interface BridgeOptions extends BrowserSessionOptions {
   // Discovery: when neither `target` nor `port` is set, attach to a Chrome
   // we discover. Default probes the agent profile only
   // (~/.browserface/chrome, brought up by `browser/start`); set
-  // `discoverDailyDriver: true` to fall back to the chrome://inspect-toggle
-  // path against the daily-driver Chrome instead. (To skip discovery
+  // `discoverUserChrome: true` to fall back to the chrome://inspect-toggle
+  // path against the user's own Chrome instead. (To skip discovery
   // entirely, just pass an explicit `target` or `host`+`port`.)
-  discoverDailyDriver?: boolean;
+  discoverUserChrome?: boolean;
 }
 
 const MIME: Record<string, string> = {
@@ -49,12 +49,12 @@ export async function startBridge(opts: BridgeOptions = {}): Promise<BridgeHandl
   const sessionOpts: BrowserSessionOptions = { ...opts };
   let cdpEndpoint = "";
   if (!sessionOpts.target && !sessionOpts.port) {
-    if (opts.discoverDailyDriver) {
+    if (opts.discoverUserChrome) {
       const ep = await discoverChrome({ log: (m) => console.log(m) });
       sessionOpts.target = ep.browserWsUrl;
       cdpEndpoint = `${ep.host}:${ep.port}`;
       console.log(
-        `[browserface] discovered daily-driver Chrome at ${ep.host}:${ep.port} (profile: ${ep.profileDir})`,
+        `[browserface] discovered user Chrome at ${ep.host}:${ep.port} (profile: ${ep.profileDir})`,
       );
     } else {
       const ep = await findAgentProfile();
@@ -63,7 +63,7 @@ export async function startBridge(opts: BridgeOptions = {}): Promise<BridgeHandl
           "agent Chrome is not running.\n" +
             "  browser/face defaults to the dedicated agent profile at ~/.browserface/chrome.\n" +
             "  Run `browser/start` to bring it up (or invoke browser/face — its wrapper does this for you),\n" +
-            "  or pass --discover to attach to your daily-driver Chrome instead.",
+            "  or pass --discover to attach to your own Chrome instead.",
         );
       }
       sessionOpts.target = ep.browserWsUrl;

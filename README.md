@@ -37,27 +37,27 @@ browser/face
 ```
 
 By default browserface starts and attaches to its **own dedicated Chrome
-profile** at `~/.browserface/chrome`, separate from your daily-driver
-Chrome. The `browser/face` wrapper auto-runs `browser/start` to bring it
-up — no setup, no popups, no overlap with your everyday browsing. The
-profile persists, so once you sign into Gmail / Slack / etc. in it,
-those sessions stick around for the next run.
+profile** at `~/.browserface/chrome`, separate from your own Chrome. The
+`browser/face` wrapper auto-runs `browser/start` to bring it up — no
+setup, no popups, no overlap with your everyday browsing. The profile
+persists, so once you sign into Gmail / Slack / etc. in it, those
+sessions stick around for the next run.
 
 Then open <http://127.0.0.1:8768>.
 
 Why a dedicated profile by default: Chrome only suppresses the per-connect
 "Allow remote debugging" popup when the debug port was opened at launch
-via `--remote-debugging-port`. Attaching to a daily-driver Chrome via the
+via `--remote-debugging-port`. Attaching to your own Chrome via the
 `chrome://inspect`-toggle path triggers that popup on every connect —
 fine for the human ad-hoc use case, painful for autonomous agents. The
 agent-profile default sidesteps it entirely. As a bonus, the agent's
 blast radius is scoped to one profile, so bank tabs / work email / etc.
-in your daily-driver Chrome are simply not reachable.
+in your own Chrome are simply not reachable.
 
-### Attach to your daily-driver Chrome instead
+### Attach to your own Chrome instead
 
 Pass `--discover` to use the original `chrome://inspect`-toggle flow
-against your everyday Chrome:
+against your existing Chrome:
 
 ```sh
 browser/face --discover
@@ -77,7 +77,7 @@ browser/face --host 127.0.0.1 --port 9222
 # Specific WS URL (page-level or browser-level):
 browser/face --target ws://127.0.0.1:9222/devtools/browser/<id>
 
-# Print connection commands for a daily-driver Chrome on this or another machine:
+# Print connection commands for a Chrome on this or another machine:
 browser/find
 
 # Headless Chrome for testing:
@@ -109,7 +109,7 @@ nor a Playwright cache is present.
 | Flag | Description |
 | --- | --- |
 | _(none)_ | Attach to the agent profile (default; `browser/face` wrapper auto-runs `browser/start`) |
-| `--discover` | Attach to the daily-driver Chrome via the `chrome://inspect`-toggle flow instead |
+| `--discover` | Attach to your own Chrome via the `chrome://inspect`-toggle flow instead |
 | `--target, -t <url>` | Full CDP WebSocket URL (browser- or page-level) |
 | `--host <host>` | CDP host (default `127.0.0.1`) |
 | `--port <port>` | CDP port — set this to skip auto-discovery |
@@ -200,9 +200,8 @@ await handle.close();
 
 `startBridge({})` (no options) attaches to the agent profile at
 `~/.browserface/chrome` and throws if it isn't running — bring it up with
-the `browser/start` script first, or pass `discoverDailyDriver: true` to
-fall back to the chrome://inspect-toggle flow against the daily-driver
-Chrome.
+the `browser/start` script first, or pass `discoverUserChrome: true` to
+fall back to the chrome://inspect-toggle flow against your own Chrome.
 
 The same `BrowserSession` class is exported for headless / agent use without
 the HTTP UI:

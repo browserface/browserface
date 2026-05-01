@@ -4,7 +4,7 @@
 #
 #   browser/face                     start bridge against the dedicated agent
 #                                    Chrome profile (auto-runs browser/start)
-#   browser/face --discover          attach to the daily-driver Chrome via
+#   browser/face --discover          attach to your own Chrome via the
 #                                    chrome://inspect-toggle flow
 #   browser/face --port 9222         attach to a specific CDP port
 #   browser/face dev [...flags]      dev mode (rebuild on changes)

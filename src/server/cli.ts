@@ -85,8 +85,10 @@ Usage:
   browserface [options]
 
 By default, browserface discovers your already-running Chrome by reading
-DevToolsActivePort from each known profile directory. If none is enabled yet,
-it opens chrome://inspect/#remote-debugging so you can tick the sticky toggle.
+DevToolsActivePort from each known profile directory (the agent profile at
+~/.browserface/chrome — if started via browser/start — is checked first).
+If none is enabled yet, it opens chrome://inspect/#remote-debugging so you
+can tick the sticky toggle.
 
 CDP target (skips auto-discovery):
   --target, -t <url>       Full CDP WebSocket URL (browser- or page-level)

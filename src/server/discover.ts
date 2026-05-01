@@ -11,9 +11,14 @@ import { join } from "node:path";
 import { spawn } from "node:child_process";
 
 // Profile directories Chrome / Edge / Brave / Chromium write into. First-match wins.
+// The dedicated agent profile (`~/.browserface/chrome`, written by `browser/start`)
+// comes first so an agent-launched Chrome is preferred over the daily-driver if
+// both are running.
 function profileDirs(): string[] {
   const home = homedir();
   return [
+    // Agent-managed profile (browser/start)
+    join(home, ".browserface/chrome"),
     // macOS
     join(home, "Library/Application Support/Google/Chrome"),
     join(home, "Library/Application Support/Microsoft Edge"),

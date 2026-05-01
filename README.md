@@ -80,9 +80,13 @@ at startup; the popup goes away when the port was opened intentionally.
 Chrome stays untouched:
 
 ```sh
-browser/start                   # idempotent: launches if not already running, prints the WS URL
-browser/face --target "$(browser/start)"
+browser/start    # idempotent: launches the agent profile if not already running
+browser/face     # auto-discovers the agent profile and connects
 ```
+
+`browser/face`'s discovery probes the agent profile (`~/.browserface/chrome`)
+first, before any daily-driver profile, so once `browser/start` is running
+plain `browser/face` Just Works — no `--target` plumbing.
 
 The profile lives at `~/.browserface/chrome` and persists across launches —
 sign into Gmail/Slack/etc. once in that profile and the agent reuses those

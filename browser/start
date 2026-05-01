@@ -5,8 +5,8 @@
 #
 # Real logic lives in src/server/start.ts → dist/server/start.js. This
 # wrapper handles --help (so reading the docs is instant — no Node startup
-# tax) and the npm install / build:server dance so a fresh clone Just
-# Works without first running browser/face.
+# tax) and the install / build dance so a fresh clone Just Works without
+# first running browser/face.
 #
 # Usage:
 #   browser/start                            launch (or attach to) the agent profile
@@ -52,6 +52,8 @@ cd "$HERE/.."
 # Both checks are no-ops on the second invocation, so the cost is paid
 # once on a fresh clone or after a wipe.
 [[ -d node_modules ]] || npm install
-[[ -f dist/server/start.js ]] || npm run build:server >&2
+# Direct tsc invocation — skips the ~100ms `npm run` overhead and keeps
+# any tsc output on stderr so stdout stays clean for the WS URL below.
+[[ -f dist/server/start.js ]] || ./node_modules/.bin/tsc -p tsconfig.server.json >&2
 
-exec npm run --silent start-agent -- "$@"
+exec node dist/server/start.js "$@"

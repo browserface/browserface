@@ -12,7 +12,7 @@
 // Output: CDP WebSocket URL on stdout (one line). Status messages and
 // errors go to stderr.
 import { spawn } from "node:child_process";
-import { existsSync, mkdirSync, readdirSync, statSync } from "node:fs";
+import { accessSync, constants, existsSync, mkdirSync, readdirSync, statSync } from "node:fs";
 import { homedir, platform } from "node:os";
 import { join } from "node:path";
 import { parseArgs } from "node:util";
@@ -45,10 +45,21 @@ function parseStartArgs(argv: string[]): StartArgs {
     process.exit(1);
   }
   const { values } = parsed;
+  let requestedPort: number | undefined;
+  if (values["port"] !== undefined) {
+    const n = Number(values["port"]);
+    if (!Number.isInteger(n) || n < 0) {
+      console.error(
+        `browser/start: --port must be a non-negative integer (got '${values["port"]}')`,
+      );
+      process.exit(1);
+    }
+    requestedPort = n;
+  }
   return {
     profileDir: values["user-data-dir"] ?? agentProfileDir(),
     binaryOverride: values["chromium-binary"],
-    requestedPort: values["port"] !== undefined ? Number(values["port"]) : undefined,
+    requestedPort,
     noLaunch: values["no-launch"] ?? false,
   };
 }
@@ -102,7 +113,11 @@ function playwrightBinaryIn(root: string): string | null {
 
 function findChromeBinary(override: string | undefined): string {
   if (override) {
-    if (!existsSync(override)) {
+    // Match the bash version's `[[ -x ]]` check — accessSync(X_OK) is the
+    // node equivalent and respects the effective UID's permissions.
+    try {
+      accessSync(override, constants.X_OK);
+    } catch {
       console.error(`browser/start: --chromium-binary '${override}' not found or not executable`);
       process.exit(1);
     }

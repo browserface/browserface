@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# Wrapper for `npm run find-chrome` — reads Chrome's DevToolsActivePort
-# and prints ready-to-run commands for connecting browserface to it.
+# Reads Chrome's DevToolsActivePort and prints ready-to-run commands for
+# connecting browserface to it.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 [[ -d node_modules ]] || npm install
-exec npm run find-chrome -- "$@"
+exec node scripts/find-chrome.mjs "$@"

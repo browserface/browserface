@@ -21,12 +21,12 @@ is a smooth handoff rather than a context switch.
 - **Navigation** — back / forward / reload, address bar with URL-vs-search detection
 - **Input** — mouse (click, drag, hover), keyboard (typing + key combos), scroll
 - **Find in page** — `Cmd/Ctrl+F` opens an inline find bar
+- **Text selection and copy** — select text in the remote page; Cmd-C copies it to your local clipboard
 - **Clipboard paste** — paste from your local clipboard into the remote browser
 - **Hover-URL readout** — see any link target and click out to it in your local browser
-- **Viewport presets** — match-window, desktop-size, or custom width / height
+- **Window resize** — match this window, a desktop preset, or custom dimensions
 - **Touch + mobile** — touch input plus an overlay sidebar on coarse-pointer devices
 - **Frame-based screencast** — periodic JPEG / PNG via `Page.startScreencast`, capped to 30 fps by default
-- **Sharing** — `browser/share` exposes the bridge via ngrok with required auth (oauth, oidc, cidr-allow, …); `browser/config` persists default flags
 
 ## How it works
 

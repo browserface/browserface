@@ -2,11 +2,11 @@
 
 A lightweight human interface for live browser sessions over Chrome DevTools Protocol (CDP).
 
+<video src="https://github.com/browserface/browserface/raw/main/docs/demo.mp4" controls width="100%"></video>
+
 browserface gives humans the same primitives an agent uses — click, type,
 scroll, navigate — over a Chromium session that may be running anywhere
-(local, VPS, ECS/Fargate). Instead of streaming a remote desktop or shipping a
-full browser UI, it provides a minimal, structured surface: periodic
-screenshots, page state, and a JSON action protocol over WebSocket.
+(local, VPS, ECS/Fargate).
 
 It is the human counterpart to agent control layers like Playwright or Browser
 Harness. Agents and humans share the same control surface, which means
@@ -205,19 +205,7 @@ await session.dispatch({ type: "navigate", url: "https://example.com" });
 session.on("screenshot", (frame) => {
   // frame.data is base64-encoded png/jpeg
 });
-session.startScreenshotLoop();
+await session.startScreencast();
 ```
 
-## Protocol
 
-`src/shared/protocol.ts` is the single source of truth for the wire format —
-every message between server and client (and any agent) uses these types. The
-server pushes `screenshot`, `page`, `ready`, `ack`, `error`. Clients send
-`hello` and `action` with one of: `click`, `mousemove`, `type`, `key`,
-`scroll`, `navigate`, `reload`, `back`, `forward`.
-
-## Status
-
-This is the initial scaffold: screenshots + input dispatch + minimal UI.
-Planned next: DOM-extracted element overlays, action replay/logging, and an
-agent-side helper that speaks the same protocol.

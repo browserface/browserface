@@ -1,0 +1,153 @@
+#!/usr/bin/env bash
+# browser/config — manage persistent browserface configuration in ~/.browserface
+#
+# Usage:
+#   browser/config set <domain> <args...>   Save a setting
+#   browser/config show [<domain>]           Print one setting, or all if no domain
+#   browser/config clear <domain>            Remove a setting
+#
+# Domains:
+#   auth   ngrok auth flags applied by browser/share when no auth flag is on the CLI
+#
+# Storage: each domain has its own file at ~/.browserface/<domain>.
+set -euo pipefail
+
+CONFIG_DIR="${HOME}/.browserface"
+KNOWN_DOMAINS=(auth)
+
+usage() {
+  cat <<'EOF'
+browser/config — manage persistent browserface configuration
+
+Usage:
+  browser/config set <domain> <args>
+  browser/config show [<domain>]
+  browser/config clear <domain>
+
+Domains:
+  auth   ngrok auth flags applied by browser/share when no auth flag is on the CLI
+
+Examples:
+  browser/config set auth --oauth google --oauth-allow-email you@example.com
+  browser/config set auth --cidr-allow 203.0.113.0/24
+  browser/config show
+  browser/config show auth
+  browser/config clear auth
+
+Storage: ~/.browserface/<domain>.
+EOF
+}
+
+is_known_domain() {
+  local d="$1" k
+  for k in "${KNOWN_DOMAINS[@]}"; do
+    [[ "$d" == "$k" ]] && return 0
+  done
+  return 1
+}
+
+# Same auth-flag set browser/share validates — keeps the two in sync.
+has_auth_flag() {
+  for arg in "$@"; do
+    case "$arg" in
+      --oauth|--oauth=*|--oidc|--oidc=*|--cidr-allow|--cidr-allow=*|\
+      --mutual-tls-cas|--mutual-tls-cas=*|\
+      --traffic-policy-file|--traffic-policy-file=*|--auth-disabled)
+        return 0 ;;
+    esac
+  done
+  return 1
+}
+
+domain_set_auth() {
+  if [[ $# -eq 0 ]]; then
+    echo "browser/config set auth: requires at least one auth flag" >&2
+    echo "  e.g. browser/config set auth --oauth google --oauth-allow-email you@example.com" >&2
+    echo "       browser/config set auth --auth-disabled  (no auth, anyone with the URL)" >&2
+    exit 1
+  fi
+  if ! has_auth_flag "$@"; then
+    echo "browser/config set auth: no recognized auth flag in arguments" >&2
+    echo "  Valid: --oauth, --oidc, --cidr-allow, --mutual-tls-cas, --traffic-policy-file, --auth-disabled" >&2
+    exit 1
+  fi
+  mkdir -p "$CONFIG_DIR"
+  printf '%s\n' "$*" > "$CONFIG_DIR/auth"
+  echo "browser/config: saved auth = $*" >&2
+}
+
+cmd_set() {
+  if [[ $# -eq 0 ]]; then
+    echo "browser/config set: missing domain (one of: ${KNOWN_DOMAINS[*]})" >&2
+    exit 1
+  fi
+  local domain="$1"; shift
+  if ! is_known_domain "$domain"; then
+    echo "browser/config set: unknown domain '$domain' (one of: ${KNOWN_DOMAINS[*]})" >&2
+    exit 1
+  fi
+  case "$domain" in
+    auth) domain_set_auth "$@" ;;
+  esac
+}
+
+cmd_show() {
+  if [[ $# -eq 0 ]]; then
+    local any=0 f name
+    for name in "${KNOWN_DOMAINS[@]}"; do
+      f="$CONFIG_DIR/$name"
+      if [[ -s "$f" ]]; then
+        printf '%s = %s\n' "$name" "$(cat "$f")"
+        any=1
+      fi
+    done
+    [[ $any -eq 0 ]] && echo "(no settings)"
+    return
+  fi
+  local domain="$1"
+  if ! is_known_domain "$domain"; then
+    echo "browser/config show: unknown domain '$domain' (one of: ${KNOWN_DOMAINS[*]})" >&2
+    exit 1
+  fi
+  local f="$CONFIG_DIR/$domain"
+  if [[ -s "$f" ]]; then
+    cat "$f"
+  else
+    echo "(unset)"
+  fi
+}
+
+cmd_clear() {
+  if [[ $# -eq 0 ]]; then
+    echo "browser/config clear: missing domain (one of: ${KNOWN_DOMAINS[*]})" >&2
+    exit 1
+  fi
+  local domain="$1"
+  if ! is_known_domain "$domain"; then
+    echo "browser/config clear: unknown domain '$domain' (one of: ${KNOWN_DOMAINS[*]})" >&2
+    exit 1
+  fi
+  local f="$CONFIG_DIR/$domain"
+  if [[ -f "$f" ]]; then
+    rm "$f"
+    echo "browser/config: cleared $domain" >&2
+  else
+    echo "browser/config: $domain was already unset" >&2
+  fi
+}
+
+if [[ $# -eq 0 ]]; then
+  usage
+  exit 0
+fi
+
+case "$1" in
+  -h|--help|help) usage; exit 0 ;;
+  set)   shift; cmd_set "$@" ;;
+  show)  shift; cmd_show "$@" ;;
+  clear) shift; cmd_clear "$@" ;;
+  *)
+    echo "browser/config: unknown verb '$1' (use set|show|clear)" >&2
+    exit 1
+    ;;
+esac

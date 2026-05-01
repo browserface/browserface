@@ -110,15 +110,26 @@ browser/share --oauth google --oauth-allow-email you@example.com
 `browser/share` exposes the bridge over a public URL. See the script's
 header for available auth flags and the security caveat.
 
-To skip repeating auth flags on every invocation, export `BROWSERFACE_AUTH`:
+To skip repeating auth flags on every invocation, save them once with
+`browser/config`:
 
 ```sh
-export BROWSERFACE_AUTH="--oauth google --oauth-allow-email you@example.com"
+browser/config set auth --oauth google --oauth-allow-email you@example.com
 browser/share you.ngrok.app
 ```
 
-Any auth flag (or `--auth-disabled`) on the CLI suppresses the env-var
-fallback for that invocation, so per-task overrides still work.
+`browser/config` writes the flags to `~/.browserface/auth`; `browser/share`
+reads that file whenever no auth flag is on the CLI. Any auth flag (or
+`--auth-disabled`) on the CLI suppresses the file fallback for that
+invocation, so per-task overrides still work.
+
+Other commands:
+
+```sh
+browser/config show         # print all settings
+browser/config show auth    # print one
+browser/config clear auth   # remove ~/.browserface/auth
+```
 
 ## Develop
 

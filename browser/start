@@ -3,22 +3,10 @@
 # using its own profile so the user's own Chrome is untouched. Idempotent:
 # if the profile is already running, just prints its CDP WebSocket URL.
 #
-# Why a dedicated profile: Chrome only suppresses the per-connect "Allow
-# remote debugging" popup when the debug port was opened at launch via
-# --remote-debugging-port. The chrome://inspect-toggle path keeps prompting,
-# which doesn't work for autonomous agents. Launching our own Chrome side-
-# steps that and also keeps the agent's blast radius scoped to one profile
-# instead of the owner's full browsing.
-#
-# Binary lookup, in order:
-#   1. --chromium-binary <path>   explicit override
-#   2. system Chrome              /Applications/Google Chrome.app on macOS
-#   3. PLAYWRIGHT_BROWSERS_PATH   workspace-vendored Playwright Chromium
-#   4. default Playwright cache   ~/Library/Caches/ms-playwright (macOS)
-#                                 ~/.cache/ms-playwright (Linux)
-#
-# Output: prints the CDP WebSocket URL on stdout (one line). Status messages
-# go to stderr. Exit 0 on success.
+# Real logic lives in src/server/start.ts → dist/server/start.js. This
+# wrapper handles --help (so reading the docs is instant — no Node startup
+# tax) and the npm install / build:server dance so a fresh clone Just
+# Works without first running browser/face.
 #
 # Usage:
 #   browser/start                            launch (or attach to) the agent profile
@@ -26,177 +14,44 @@
 #   browser/start --chromium-binary <path>   override binary lookup
 #   browser/start --port <n>                 request a specific debug port (default lets Chrome pick)
 #   browser/start --no-launch                only attach if already running; error otherwise
+#
+# Binary lookup, in order:
+#   1. --chromium-binary <path>   explicit override
+#   2. system Chrome              /Applications/Google Chrome.app on macOS;
+#                                 google-chrome / chromium on Linux
+#   3. PLAYWRIGHT_BROWSERS_PATH   workspace-vendored Playwright Chromium
+#   4. default Playwright cache   ~/Library/Caches/ms-playwright (macOS)
+#                                 ~/.cache/ms-playwright (Linux)
+#
+# Output: prints the CDP WebSocket URL on stdout (one line). Status messages
+# go to stderr. Exit 0 on success.
+#
+# Why a dedicated profile: Chrome only suppresses the per-connect "Allow
+# remote debugging" popup when the debug port was opened at launch via
+# --remote-debugging-port. The chrome://inspect-toggle path keeps prompting,
+# which doesn't work for autonomous agents. Launching our own Chrome side-
+# steps that and also keeps the agent's blast radius scoped to one profile
+# instead of the owner's full browsing.
 set -euo pipefail
 
-DEFAULT_PROFILE_DIR="${HOME}/.browserface/chrome"
-profile_dir="$DEFAULT_PROFILE_DIR"
-binary_override=""
-requested_port=""
-no_launch=0
-
-usage() {
-  sed -n '2,33p' "$0" | sed 's/^# \{0,1\}//'
-}
-
-while [[ $# -gt 0 ]]; do
-  case "$1" in
-    --user-data-dir)     profile_dir="$2"; shift 2 ;;
-    --user-data-dir=*)   profile_dir="${1#*=}"; shift ;;
-    --chromium-binary)   binary_override="$2"; shift 2 ;;
-    --chromium-binary=*) binary_override="${1#*=}"; shift ;;
-    --port)              requested_port="$2"; shift 2 ;;
-    --port=*)            requested_port="${1#*=}"; shift ;;
-    --no-launch)         no_launch=1; shift ;;
-    -h|--help)           usage; exit 0 ;;
-    *) echo "browser/start: unknown arg '$1'" >&2; exit 1 ;;
+# Intercept --help in bash so it's instant — no Node startup tax for a
+# command the user runs to read documentation.
+for arg in "$@"; do
+  case "$arg" in
+    -h|--help)
+      sed -n '2,34p' "$0" | sed 's/^# \{0,1\}//'
+      exit 0
+      ;;
   esac
 done
 
-# ── binary lookup ─────────────────────────────────────────────────────────
+HERE="$(dirname "$0")"
+cd "$HERE/.."
 
-# Best Playwright chromium revision found under <root>/chromium-* (newest mtime).
-# Empty if none.
-playwright_binary_in() {
-  local root="$1" cand="" d
-  [[ -d "$root" ]] || return 1
-  for d in "$root"/chromium-*; do
-    [[ -d "$d" ]] || continue
-    if [[ -z "$cand" || "$d" -nt "$cand" ]]; then cand="$d"; fi
-  done
-  [[ -z "$cand" ]] && return 1
-  case "$(uname)" in
-    Darwin) [[ -x "$cand/chrome-mac/Chromium.app/Contents/MacOS/Chromium" ]] && { echo "$cand/chrome-mac/Chromium.app/Contents/MacOS/Chromium"; return 0; } ;;
-    Linux)  [[ -x "$cand/chrome-linux/chrome" ]] && { echo "$cand/chrome-linux/chrome"; return 0; } ;;
-  esac
-  return 1
-}
+# Make a fresh clone Just Work without requiring browser/face first.
+# Both checks are no-ops on the second invocation, so the cost is paid
+# once on a fresh clone or after a wipe.
+[[ -d node_modules ]] || npm install
+[[ -f dist/server/start.js ]] || npm run build:server >&2
 
-find_binary() {
-  if [[ -n "$binary_override" ]]; then
-    [[ -x "$binary_override" ]] || { echo "browser/start: --chromium-binary '$binary_override' not found or not executable" >&2; return 1; }
-    echo "$binary_override"; return 0
-  fi
-  # System Chrome.
-  case "$(uname)" in
-    Darwin)
-      if [[ -x "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" ]]; then
-        echo "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"; return 0
-      fi
-      ;;
-    Linux)
-      local b
-      for b in google-chrome google-chrome-stable chromium chromium-browser; do
-        if command -v "$b" >/dev/null 2>&1; then
-          command -v "$b"; return 0
-        fi
-      done
-      ;;
-  esac
-  # Workspace Playwright cache, then default Playwright cache.
-  if [[ -n "${PLAYWRIGHT_BROWSERS_PATH:-}" ]]; then
-    playwright_binary_in "$PLAYWRIGHT_BROWSERS_PATH" && return 0
-  fi
-  case "$(uname)" in
-    Darwin) playwright_binary_in "$HOME/Library/Caches/ms-playwright" && return 0 ;;
-    Linux)  playwright_binary_in "$HOME/.cache/ms-playwright" && return 0 ;;
-  esac
-  echo "browser/start: no Chrome or Chromium binary found." >&2
-  echo "  Tried: system Chrome, \$PLAYWRIGHT_BROWSERS_PATH, default Playwright cache." >&2
-  echo "  Install Chrome, or run 'npx playwright install chromium', or pass --chromium-binary <path>." >&2
-  return 1
-}
-
-# ── port + ws-url discovery ───────────────────────────────────────────────
-
-# True if something is accepting TCP on 127.0.0.1:$1. Uses bash's /dev/tcp,
-# so no external dep.
-port_open() {
-  (echo > "/dev/tcp/127.0.0.1/$1") >/dev/null 2>&1
-}
-
-# Read the WS URL from the profile's DevToolsActivePort, if Chrome wrote it
-# *and* is still listening. Empty/exit 1 otherwise.
-ws_url_from_profile() {
-  local f="$profile_dir/DevToolsActivePort"
-  [[ -s "$f" ]] || return 1
-  local port path
-  port=$(head -1 "$f")
-  path=$(sed -n '2p' "$f")
-  [[ -z "$port" || -z "$path" ]] && return 1
-  port_open "$port" || return 1
-  echo "ws://127.0.0.1:${port}${path}"
-}
-
-# True if Chrome at port $1 has at least one page-type target. macOS keeps
-# Chrome.app alive after the last window is closed, so the CDP port stays
-# bound but /json reports zero page targets — visually nothing's there.
-has_page_target() {
-  local port="$1" body
-  body=$(curl -s --max-time 2 "http://127.0.0.1:${port}/json") || return 1
-  # Chrome pretty-prints with spaces; tolerate either spacing.
-  printf '%s' "$body" | grep -qE '"type"[[:space:]]*:[[:space:]]*"page"'
-}
-
-# Open a fresh about:blank tab on the running Chrome at port $1, which
-# brings up a window if none exist.
-open_blank_tab() {
-  local port="$1"
-  curl -s --max-time 2 -X PUT "http://127.0.0.1:${port}/json/new" >/dev/null
-}
-
-# ── main ──────────────────────────────────────────────────────────────────
-
-# Already running? If so, make sure there's a visible window — Chrome may
-# be alive with zero tabs after the user closed every window.
-if url=$(ws_url_from_profile); then
-  port=$(head -1 "$profile_dir/DevToolsActivePort")
-  if ! has_page_target "$port"; then
-    echo "browser/start: agent Chrome is alive but has no open windows; opening one." >&2
-    open_blank_tab "$port" || echo "browser/start: warning: PUT /json/new failed" >&2
-  fi
-  echo "$url"
-  exit 0
-fi
-
-if [[ $no_launch -eq 1 ]]; then
-  echo "browser/start: --no-launch and no agent Chrome is running at $profile_dir" >&2
-  exit 1
-fi
-
-binary_path="$(find_binary)" || exit 1
-mkdir -p "$profile_dir"
-
-launch_args=(
-  "--user-data-dir=$profile_dir"
-  "--no-first-run"
-  "--no-default-browser-check"
-)
-if [[ -n "$requested_port" ]]; then
-  launch_args+=("--remote-debugging-port=$requested_port")
-else
-  # Let Chrome pick a free port; the actual port lands in DevToolsActivePort.
-  launch_args+=("--remote-debugging-port=0")
-fi
-
-echo "browser/start: launching $binary_path" >&2
-nohup "$binary_path" "${launch_args[@]}" >/dev/null 2>&1 &
-chrome_pid=$!
-disown
-
-# Wait up to 30s for Chrome to write DevToolsActivePort and start listening.
-# Bail early if Chrome itself exits (typical cause: another Chrome process
-# already holds the profile lock for $profile_dir).
-for _ in $(seq 1 60); do
-  if url=$(ws_url_from_profile); then
-    echo "$url"
-    exit 0
-  fi
-  if ! kill -0 "$chrome_pid" 2>/dev/null; then
-    echo "browser/start: Chrome exited before publishing DevToolsActivePort." >&2
-    echo "  Likely: another Chrome process already holds $profile_dir." >&2
-    exit 1
-  fi
-  sleep 0.5
-done
-echo "browser/start: Chrome launched but DevToolsActivePort never came up at $profile_dir/DevToolsActivePort" >&2
-exit 1
+exec npm run --silent start-agent -- "$@"

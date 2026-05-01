@@ -110,11 +110,11 @@ nor a Playwright cache is present.
 | --- | --- |
 | _(none)_ | Attach to the agent profile (default; `browser/face` wrapper auto-runs `browser/start`) |
 | `--discover` | Attach to your own Chrome via the `chrome://inspect`-toggle flow instead |
-| `--target, -t <url>` | Full CDP WebSocket URL (browser- or page-level) |
+| `--target <url>` | Full CDP WebSocket URL (browser- or page-level) |
 | `--host <host>` | CDP host (default `127.0.0.1`) |
 | `--port <port>` | CDP port — set this to skip auto-discovery |
 | `--listen-host <host>` | UI bind host (default `127.0.0.1`) |
-| `--listen-port, -l <port>` | UI bind port (default `8768`) |
+| `--listen-port <port>` | UI bind port (default `8768`) |
 | `--width <px>` `--height <px>` | Override viewport via `Emulation.setDeviceMetricsOverride` |
 | `--max-fps <n>` | Cap emitted frames per second (default `30`; `0` disables) |
 | `--format <png\|jpeg>` | Screenshot format (default `jpeg`) |

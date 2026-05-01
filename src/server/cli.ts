@@ -29,7 +29,6 @@ function parseArgs(argv: string[]): CliArgs {
     const next = () => inlineValue ?? argv[++i];
     switch (name) {
       case "--target":
-      case "-t":
         out.target = next();
         break;
       case "--host":
@@ -42,7 +41,6 @@ function parseArgs(argv: string[]): CliArgs {
         out.listenHost = next();
         break;
       case "--listen-port":
-      case "-l":
         out.listenPort = Number(next());
         break;
       case "--width":
@@ -91,7 +89,7 @@ live. Pass --discover to attach to your own Chrome instead via the
 chrome://inspect-toggle flow.
 
 CDP target (skips auto-discovery):
-  --target, -t <url>       Full CDP WebSocket URL (browser- or page-level)
+  --target <url>           Full CDP WebSocket URL (browser- or page-level)
   --host <host>            CDP host (default 127.0.0.1)
   --port <port>            CDP port (no default — set this to skip discovery)
   --discover               Attach to your own Chrome via the chrome://inspect
@@ -99,7 +97,7 @@ CDP target (skips auto-discovery):
 
 Server:
   --listen-host <host>     HTTP/WS bind host (default 127.0.0.1)
-  --listen-port, -l <port> HTTP/WS bind port (default 8768)
+  --listen-port <port>     HTTP/WS bind port (default 8768)
 
 Viewport / capture:
   --width <px>             Override viewport width (Emulation.setDeviceMetricsOverride)

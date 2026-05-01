@@ -46,7 +46,7 @@ merge_bridge_args() {
 ensure_agent_chrome_if_default() {
   for arg in "$@"; do
     case "$arg" in
-      --discover|--target|--target=*|-t|--port|--port=*|--host|--host=*|\
+      --discover|--target|--target=*|--port|--port=*|--host|--host=*|\
       --help|-h)
         return 0 ;;
     esac

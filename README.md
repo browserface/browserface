@@ -112,7 +112,7 @@ nor a Playwright cache is present.
 | `--discover` | Attach to your own Chrome via the `chrome://inspect`-toggle flow instead |
 | `--target <url>` | Full CDP WebSocket URL (browser- or page-level) |
 | `--host <host>` | CDP host (default `127.0.0.1`) |
-| `--port <port>` | CDP port — set this to skip auto-discovery |
+| `--port <port>` | CDP port (no default) |
 | `--listen-host <host>` | UI bind host (default `127.0.0.1`) |
 | `--listen-port <port>` | UI bind port (default `8768`) |
 | `--width <px>` `--height <px>` | Override viewport via `Emulation.setDeviceMetricsOverride` |

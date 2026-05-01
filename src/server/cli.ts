@@ -91,7 +91,7 @@ chrome://inspect-toggle flow.
 Connect to a specific CDP target:
   --target <url>           Full CDP WebSocket URL (browser- or page-level)
   --host <host>            CDP host (default 127.0.0.1)
-  --port <port>            CDP port (no default)
+  --port <port>            CDP port
 
 Discover your own Chrome instead of the agent profile:
   --discover               Attach via the chrome://inspect toggle flow

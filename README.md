@@ -4,7 +4,7 @@ A web-based interface for controlling live browser sessions over CDP.
 
 https://github.com/user-attachments/assets/c23eada7-663d-4a1b-96a0-8b3be20d97e3
 
-*Controlling a remote browser — tabs, navigation, copy/paste, find, and even frame-based video playback.*
+*Controlling a remote browser — tabs, navigation, text entry, scrolling, find, and even frame-based video playback.*
 
 browserface gives humans the same primitives an agent uses — click, type,
 scroll, navigate — over a Chromium session that may be running anywhere
@@ -14,6 +14,21 @@ It is the human counterpart to agent control layers like Playwright or Browser
 Harness. Agents and humans share the same control surface, which means
 intervention — handling a login, clearing a 2FA prompt, correcting an action —
 is a smooth handoff rather than a context switch.
+
+## Features
+
+- **Tabs** — switch, new, close; "recover" prompt for tabs Chrome has discarded
+- **Navigation** — back / forward / reload, address bar with URL-vs-search detection
+- **Input** — mouse (click, drag, hover), keyboard (typing + key combos), scroll
+- **Find in page** — `Cmd/Ctrl+F` opens an inline find bar
+- **Clipboard paste** — paste from your local clipboard into the remote browser
+- **Hover-URL readout** — see any link target and click out to it in your local browser
+- **Viewport presets** — match-window, desktop-size, or custom width / height
+- **Touch + mobile** — touch input plus an overlay sidebar on coarse-pointer devices
+- **Frame-based screencast** — periodic JPEG / PNG via `Page.startScreencast`, capped to 30 fps by default
+- **Three connection modes** — dedicated agent profile (default), `--discover` for your daily-driver Chrome, or explicit `--target` / `--port`
+- **Sharing** — `browser/share` exposes the bridge via ngrok with required auth (oauth, oidc, cidr-allow, …); `browser/config` persists default flags
+- **Programmatic** — `BrowserSession` for headless / agent use without the HTTP UI; full TypeScript types for every wire message
 
 ## How it works
 

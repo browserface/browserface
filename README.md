@@ -4,7 +4,7 @@ A web-based interface for controlling live browser sessions over CDP.
 
 https://github.com/user-attachments/assets/c23eada7-663d-4a1b-96a0-8b3be20d97e3
 
-*Controlling a remote browser — tabs, navigation, copy/paste, find, and even frame-based video playback.*
+*Controlling a remote browser — tabs, navigation, text entry, scrolling, find, and even frame-based video playback.*
 
 browserface gives humans the same primitives an agent uses — click, type,
 scroll, navigate — over a Chromium session that may be running anywhere
@@ -15,14 +15,28 @@ Harness. Agents and humans share the same control surface, which means
 intervention — handling a login, clearing a 2FA prompt, correcting an action —
 is a smooth handoff rather than a context switch.
 
+## Features
+
+- **Tabs** — switch, new, close; "recover" prompt for tabs Chrome has discarded
+- **Navigation** — back / forward / reload, address bar with URL-vs-search detection
+- **Input** — mouse (click, drag, hover), keyboard (typing + key combos), scroll
+- **Find in page** — `Cmd/Ctrl+F` opens an inline find bar
+- **Text selection and copy** — select text in the remote page; Cmd-C copies it to your local clipboard
+- **Clipboard paste** — paste from your local clipboard into the remote browser
+- **Hover-URL readout** — see any link target and click out to it in your local browser
+- **Window resize** — match this window, a desktop preset, or custom dimensions
+- **Touch + mobile** — touch input plus an overlay sidebar on coarse-pointer devices
+- **Frame-based screencast** — periodic JPEG / PNG via `Page.startScreencast`, capped to 30 fps by default
+
 ## How it works
 
 ```
-Chromium (anywhere, headless OK)
+Chrome/Chromium (anywhere, headless OK)
   ↓ CDP WebSocket
 Browser Session (chrome-remote-interface)
-  ↓ extracts state (Page.captureScreenshot, Runtime, DOM, page events)
-  ↓ dispatches actions (Input.dispatchMouseEvent / dispatchKeyEvent / insertText)
+  ↓ extracts state (Page.startScreencast, Runtime, Target, navigation events)
+  ↓ dispatches actions (Input.dispatchMouseEvent / dispatchKeyEvent / insertText,
+                        Page.navigate, Target.createTarget)
 Bridge (HTTP + WebSocket)
   ↓ JSON protocol
 Client UI (any browser) — and/or agents

@@ -205,7 +205,7 @@ await session.dispatch({ type: "navigate", url: "https://example.com" });
 session.on("screenshot", (frame) => {
   // frame.data is base64-encoded png/jpeg
 });
-session.startScreenshotLoop();
+await session.startScreencast();
 ```
 
 

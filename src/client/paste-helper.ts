@@ -91,6 +91,11 @@ export function setupPasteHelper(opts: PasteHelperOptions): PasteHelper {
   // wrote so the selectionchange observer can ignore our own writes.
   let state: RemoteState = { text: "" };
   let lastProgrammaticSelection: [number, number] = [0, 0];
+  // True while an IME (Vietnamese Telex/VNI, CJK, dead keys) holds marked text
+  // in the helper. Raw keystrokes then belong to the IME, and rewriting the
+  // helper's value would cancel the composition, so the remote only receives
+  // the committed text at compositionend.
+  let composing = false;
 
   const dbg = opts.debug
     ? (event: string, fields?: Record<string, unknown>) => {
@@ -109,6 +114,7 @@ export function setupPasteHelper(opts: PasteHelperOptions): PasteHelper {
   }
 
   function applyState() {
+    if (composing) return;
     const value = expectedValue();
     if (el.value !== value) el.value = value;
     const [start, end] = expectedSelection();
@@ -167,6 +173,7 @@ export function setupPasteHelper(opts: PasteHelperOptions): PasteHelper {
   // disabled — keystrokes are forwarded by the keydown handler and the
   // field's state is mirrored back by the server.
   document.addEventListener("selectionchange", () => {
+    if (composing) return;
     if (document.activeElement !== el) {
       dbg("selectionchange-skip", { reason: "helper-not-focused" });
       return;
@@ -224,6 +231,12 @@ export function setupPasteHelper(opts: PasteHelperOptions): PasteHelper {
   //    `type` actions so we don't double-send.
   el.addEventListener("keydown", (e) => {
     if (e.key === "Meta" || e.key === "Control" || e.key === "Alt" || e.key === "Shift") {
+      return;
+    }
+    // keyCode 229 marks a keystroke the IME consumed (Chrome reports it before
+    // compositionstart too). Its text arrives through composition or input.
+    if (composing || e.isComposing || e.keyCode === 229) {
+      dbg("keydown-ime", { key: e.key, composing });
       return;
     }
     if (e.metaKey) {
@@ -287,11 +300,37 @@ export function setupPasteHelper(opts: PasteHelperOptions): PasteHelper {
   // helper isn't editable conceptually, so we ignore input events; any
   // accidental local mutation is reverted by the selectionchange handler's
   // applyState() snap-back.
+  el.addEventListener("compositionstart", () => {
+    composing = true;
+    dbg("composition-start");
+  });
+  el.addEventListener("compositionend", (e) => {
+    composing = false;
+    const text = (e as CompositionEvent).data;
+    if (text) send({ type: "type", text });
+    dbg("composition-end", { text });
+    // Selection mode snaps back to its padded baseline; field mode keeps the
+    // composed text until the server's mirror confirms it.
+    if (!state.field) applyState();
+  });
+
   el.addEventListener("input", (e) => {
-    if (!state.field) return;
     const ie = e as InputEvent;
     const inputType = ie.inputType;
     if (inputType === "insertFromPaste") return; // handled by paste listener
+    // Composed text is sent once, at compositionend.
+    if (inputType === "insertCompositionText" || inputType === "insertFromComposition") return;
+    if (!state.field) {
+      // Printable keys reach a selection-mode remote through keydown, which
+      // preventDefaults them, so text arriving here came from somewhere else:
+      // an IME commit such as the space that ends a Telex word.
+      if ((inputType === "insertText" || inputType === "insertReplacementText") && ie.data) {
+        send({ type: "type", text: ie.data });
+        dbg("input-text-selection-mode", { inputType, data: ie.data });
+      }
+      applyState();
+      return;
+    }
     if (inputType === "insertText" || inputType === "insertReplacementText") {
       if (typeof ie.data === "string" && ie.data.length > 0) {
         send({ type: "type", text: ie.data });
